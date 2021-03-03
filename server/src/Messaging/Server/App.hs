@@ -2,7 +2,7 @@
 
 module Messaging.Server.App where
 
-import Control.Concurrent.STM (TVar, atomically, modifyTVar, newTVar, readTVar)
+import Control.Concurrent.STM (TVar, atomically, modifyTVar, newTVarIO, readTVarIO)
 import Control.Monad.Reader.Class (MonadReader, asks)
 import Control.Monad.Trans (MonadIO (liftIO))
 import Control.Monad.Trans.Reader (ReaderT, runReaderT)
@@ -19,8 +19,8 @@ data State = State
   }
 
 initialState :: IO State
-initialState = atomically $ do
-  State <$> newTVar []
+initialState =
+  State <$> newTVarIO []
 
 addConnection :: WS.Connection -> App ()
 addConnection conn = do
@@ -30,4 +30,4 @@ addConnection conn = do
 getConnections :: App [WS.Connection]
 getConnections = do
   conns <- asks connections
-  liftIO $ atomically $ readTVar conns
+  liftIO $ readTVarIO conns

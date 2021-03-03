@@ -1,6 +1,6 @@
 module Main where
 
-import Messaging.Server
+import Messaging.Server (runApp)
 
 main :: IO ()
-main = putStrLn "Hello World!"
+main = runApp

@@ -1,6 +1,6 @@
 module Main where
 
-import Messaging.Client
+import Messaging.Client (runClient)
 
 main :: IO ()
-main = putStrLn "Hello World!"
+main = runClient

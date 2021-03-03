@@ -22,7 +22,9 @@ dependencies:
 - messaging-shared
 - mtl
 - network
+- stm
 - text
+- transformers
 - websockets
 
 ghc-options:

@@ -1,20 +1,27 @@
 module Messaging.Server where
 
+import Data.Foldable (traverse_)
 import Control.Monad (forever)
+import Control.Monad.Trans (MonadIO (liftIO))
 import qualified Data.Text.IO as T
+import Messaging.Server.State (State, runApp, addConnection, initialState, getConnections)
 import qualified Network.WebSockets as WS
 
-runApp :: IO ()
-runApp = do
+runServer :: IO ()
+runServer = do
   -- TODO: read from command line args
-  WS.runServer "127.0.0.1" 8080 app
+  state <- initialState
+  WS.runServer "127.0.0.1" 8080 (app state)
 
-app :: WS.ServerApp
-app pending = do
+app :: State -> WS.ServerApp
+app state pending = do
   conn <- WS.acceptRequest pending
-  WS.withPingThread conn 30 (return ()) $ do
-    putStrLn "Connected!"
-    forever $ do
-      msg <- WS.receiveData conn
-      T.putStrLn msg
-      WS.sendTextData conn msg
+  WS.withPingThread conn 30 (return ()) $
+    runApp state $ do
+      addConnection conn
+      liftIO $ putStrLn "Connected!"
+      forever $ do
+        msg <- liftIO $ WS.receiveData conn
+        liftIO $ T.putStrLn msg
+        conns <- getConnections
+        liftIO $ traverse_ (flip WS.sendTextData msg) conns

@@ -1,6 +1,6 @@
 module Main where
 
-import Messaging.Server (runApp)
+import Messaging.Server (runServer)
 
 main :: IO ()
-main = runApp
+main = runServer

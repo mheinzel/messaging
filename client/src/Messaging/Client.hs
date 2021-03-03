@@ -2,7 +2,8 @@
 
 module Messaging.Client where
 
-import Control.Monad (unless)
+import Control.Concurrent (forkIO)
+import Control.Monad (forever, unless)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -18,14 +19,19 @@ client :: WS.ClientApp ()
 client conn = do
   putStrLn "Connected!"
 
-  -- Read from stdin and write to WS
-  let loop = do
-        line <- T.getLine
-        unless (T.null line) $ do
-          WS.sendTextData conn line
-          msg <- WS.receiveData conn
-          T.putStrLn msg
-          loop
-
-  loop
+  _threadId <- forkIO $ recvThread conn
+  sendThread conn
   WS.sendClose conn ("Bye!" :: Text)
+
+recvThread :: WS.Connection -> IO ()
+recvThread conn = forever $ do
+  msg <- WS.receiveData conn
+  T.putStrLn msg
+
+sendThread :: WS.Connection -> IO ()
+sendThread conn = do
+  -- Read from stdin and write to WS
+  line <- T.getLine
+  unless (T.null line) $ do
+    WS.sendTextData conn line
+    sendThread conn

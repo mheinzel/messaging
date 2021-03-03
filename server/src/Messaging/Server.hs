@@ -4,7 +4,7 @@ import Control.Monad (forever)
 import Control.Monad.Trans (MonadIO (liftIO))
 import Data.Foldable (traverse_)
 import qualified Data.Text.IO as T
-import Messaging.Server.State (State, addConnection, getConnections, initialState, runApp)
+import Messaging.Server.App (State, addConnection, getConnections, initialState, runApp)
 import qualified Network.WebSockets as WS
 
 runServer :: IO ()

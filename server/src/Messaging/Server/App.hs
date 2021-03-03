@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Messaging.Server.State where
+module Messaging.Server.App where
 
 import Control.Concurrent.STM (TVar, atomically, modifyTVar, newTVar, readTVar)
 import Control.Monad.Reader.Class (MonadReader, asks)

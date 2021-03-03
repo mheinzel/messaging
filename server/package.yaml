@@ -1,0 +1,37 @@
+name:                messaging-server
+version:             0.1.0.0
+github:              "githubuser/messaging"
+license:             BSD3
+author:              "Luciano Platjouw, Matthias Heinzel, Nathan Oerlemans"
+maintainer:          "mheinzel@posteo.de"
+copyright:           "2021 Luciano Platjouw, Matthias Heinzel, Nathan Oerlemans"
+
+extra-source-files:
+- README.md
+
+synopsis:            Messaging server
+category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/mheinzel/messaging#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- messaging-shared
+
+library:
+  source-dirs: src
+
+executables:
+  messaging-server-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - base
+    - messaging-server

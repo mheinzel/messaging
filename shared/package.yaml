@@ -1,0 +1,24 @@
+name:                messaging-shared
+version:             0.1.0.0
+github:              "githubuser/messaging"
+license:             BSD3
+author:              "Luciano Platjouw, Matthias Heinzel, Nathan Oerlemans"
+maintainer:          "mheinzel@posteo.de"
+copyright:           "2021 Luciano Platjouw, Matthias Heinzel, Nathan Oerlemans"
+
+extra-source-files:
+- README.md
+
+synopsis:            Messaging shared interface
+category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/mheinzel/messaging#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+
+library:
+  source-dirs: src

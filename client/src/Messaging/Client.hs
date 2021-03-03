@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Messaging.Client where
@@ -6,14 +7,31 @@ import Control.Concurrent (forkIO)
 import Control.Monad (forever, unless)
 import Data.Text (Text)
 import qualified Data.Text as T
+import qualified Data.Text as Text
+import qualified Data.Text.Encoding as Text (encodeUtf8)
 import qualified Data.Text.IO as T
+import Messaging.Shared (mkUserName, userNameText)
 import Network.Socket (withSocketsDo)
 import qualified Network.WebSockets as WS
+import qualified System.Environment as Env
+import qualified System.Exit as Exit
 
 runClient :: IO ()
 runClient = do
-  -- TODO: read from command line args
-  withSocketsDo $ WS.runClient "127.0.0.1" 8080 "/" client
+  -- TODO: proper command line argument parser, also read URL and port
+  userName <- do
+    progName <- Env.getProgName
+    Env.getArgs >>= \case
+      [name] -> case mkUserName (Text.pack name) of
+        Just userName -> pure userName
+        Nothing -> Exit.die $ "usage: " <> progName <> " USERNAME"
+      _ -> Exit.die $ "usage: " <> progName <> " USERNAME"
+
+  let options = WS.defaultConnectionOptions
+  let headers = [("UserName", Text.encodeUtf8 (userNameText userName))]
+
+  withSocketsDo $
+    WS.runClientWith "127.0.0.1" 8080 "/" options headers client
 
 client :: WS.ClientApp ()
 client conn = do

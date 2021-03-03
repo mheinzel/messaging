@@ -19,9 +19,11 @@ description:         Please see the README on GitHub at <https://github.com/mhei
 
 dependencies:
 - base >= 4.7 && < 5
+- containers
 - messaging-shared
 - mtl
 - network
+- safe-exceptions
 - stm
 - text
 - transformers

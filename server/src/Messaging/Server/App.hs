@@ -1,33 +1,42 @@
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE StrictData #-}
 
 module Messaging.Server.App where
 
-import Control.Concurrent.STM (TVar, atomically, modifyTVar, newTVarIO, readTVarIO)
-import Control.Monad.Reader.Class (MonadReader, asks)
-import Control.Monad.Trans (MonadIO (liftIO))
+import Control.Concurrent.STM (TVar, newTVarIO)
+import Control.Monad.Reader.Class (MonadReader)
+import Control.Monad.Trans (MonadIO)
 import Control.Monad.Trans.Reader (ReaderT, runReaderT)
+import Data.Map.Strict (Map)
+import Data.Set (Set)
+import Messaging.Shared (ConversationName, UserName)
 import qualified Network.WebSockets as WS
 
 newtype App a = App {unApp :: ReaderT State IO a}
-  deriving (Functor, Applicative, Monad, MonadReader State, MonadIO)
+  deriving newtype (Functor, Applicative, Monad, MonadReader State, MonadIO)
 
 runApp :: State -> App a -> IO a
 runApp s = flip runReaderT s . unApp
 
 data State = State
-  { connections :: TVar [WS.Connection]
+  { activeConversations :: TVar (Map ConversationName Conversation),
+    connectedUsers :: TVar (Map UserName ConnectedUser)
   }
+
+-- | Currently only users exist that are currently connected. Later, we might
+-- relax that assumption and make the 'userConnection' field optional.
+data ConnectedUser = ConnectedUser
+  { connectedUserName :: UserName,
+    userConnection :: WS.Connection
+  }
+
+data Conversation = Conversation
+  { conversationName :: ConversationName,
+    conversationMembers :: Set UserName
+  }
+  deriving stock (Show)
 
 initialState :: IO State
 initialState =
-  State <$> newTVarIO []
-
-addConnection :: WS.Connection -> App ()
-addConnection conn = do
-  conns <- asks connections
-  liftIO $ atomically $ modifyTVar conns (conn :)
-
-getConnections :: App [WS.Connection]
-getConnections = do
-  conns <- asks connections
-  liftIO $ readTVarIO conns
+  State <$> newTVarIO mempty <*> newTVarIO mempty

@@ -1,14 +1,19 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Messaging.Server.Auth where
+-- | Module header
+module Messaging.Server.Auth
+  ( AuthError (..),
+    authenticate,
+  )
+where
 
+import Control.Monad ((<=<))
 import qualified Data.Text.Encoding as Text (decodeUtf8')
 import Messaging.Server.App (App)
 import qualified Messaging.Server.Delivery as Delivery
 import Messaging.Shared (UserName, mkUserName)
 import qualified Network.WebSockets as WS
-import Control.Monad ((<=<))
 
 data AuthError
   = MissingUserName

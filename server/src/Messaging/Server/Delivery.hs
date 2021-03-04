@@ -48,29 +48,3 @@ lookupConnections users = do
           Just c -> Right (userConnection c)
           Nothing -> Left u
   pure (MissingConnections missing, found)
-
-{-
-broadcast :: ConversationName -> Text -> App ()
-broadcast convName msgPart = do
-  -- At some point, we want to properly return the conversation, so messages
-  -- for different conversations can be displayed separately on the client.
-  let msg = conversationNameText convName <> " | " <> msgPart
-  -- TODO: introduce proper logging
-  liftIO $ Text.putStrLn msg
-  conns <- getConversationConnections convName
-  liftIO $ traverse_ (flip WS.sendTextData msg) conns
-
-getConversationConnections :: ConversationName -> App [WS.Connection]
-getConversationConnections convName = do
-  state <- ask
-  (convs, users) <- liftIO $
-    atomically $ do
-      (,) <$> readTVar (activeConversations state) <*> readTVar (connectedUsers state)
-
-  pure . map userConnection $
-    case Map.lookup convName convs of
-      Nothing -> []
-      Just c ->
-        -- TODO: remove conversation members without connection?
-        mapMaybe (flip Map.lookup users) (toList (conversationMembers c))
--}

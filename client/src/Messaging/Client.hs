@@ -24,7 +24,7 @@ runClient = do
     Env.getArgs >>= \case
       [name] -> case mkUserName (Text.pack name) of
         Just userName -> pure userName
-        Nothing -> Exit.die $ "usage: " <> progName <> " USERNAME"
+        Nothing -> Exit.die "error: invalid user name"
       _ -> Exit.die $ "usage: " <> progName <> " USERNAME"
 
   let options = WS.defaultConnectionOptions

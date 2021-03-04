@@ -1,6 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Messaging.Server.Conversation where
+module Messaging.Server.Conversation
+  ( addToConversation,
+    removeFromConversation,
+    broadcastMessage,
+  )
+where
 
 import Control.Concurrent.STM (atomically, modifyTVar, readTVarIO)
 import Control.Monad.Reader.Class (asks)

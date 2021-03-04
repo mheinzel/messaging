@@ -10,7 +10,7 @@ import qualified Data.Text as T
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text (encodeUtf8)
 import qualified Data.Text.IO as T
-import Messaging.Shared (mkUserName, userNameText)
+import Messaging.Shared.User (mkUserName, userNameText)
 import Network.Socket (withSocketsDo)
 import qualified Network.WebSockets as WS
 import qualified System.Environment as Env

@@ -12,7 +12,7 @@ import Control.Monad ((<=<))
 import qualified Data.Text.Encoding as Text (decodeUtf8')
 import Messaging.Server.App (App)
 import qualified Messaging.Server.Delivery as Delivery
-import Messaging.Shared (UserName, mkUserName)
+import Messaging.Shared.User (UserName, mkUserName)
 import qualified Network.WebSockets as WS
 
 data AuthError

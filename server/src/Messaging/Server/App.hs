@@ -10,7 +10,8 @@ import Control.Monad.Trans (MonadIO)
 import Control.Monad.Trans.Reader (ReaderT, runReaderT)
 import Data.Map.Strict (Map)
 import Data.Set (Set)
-import Messaging.Shared (ConversationName, UserName)
+import Messaging.Shared.Conversation (ConversationName)
+import Messaging.Shared.User (User, UserName)
 import qualified Network.WebSockets as WS
 
 newtype App a = App {unApp :: ReaderT State IO a}

@@ -11,7 +11,7 @@ import qualified Data.Map.Strict as Map
 import Data.Maybe (isJust)
 import Data.Text (Text)
 import Messaging.Server.App (App, ConnectedUser (ConnectedUser, userConnection), State (connectedUsers))
-import Messaging.Shared (UserName)
+import Messaging.Shared.User (UserName)
 import qualified Network.WebSockets as WS
 
 addConnection :: UserName -> WS.Connection -> App ()

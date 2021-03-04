@@ -17,7 +17,8 @@ import Data.Text (Text)
 import qualified Data.Text.IO as Text (putStrLn)
 import Messaging.Server.App (App, Conversation (Conversation, conversationMembers), activeConversations)
 import qualified Messaging.Server.Delivery as Delivery
-import Messaging.Shared (ConversationName (conversationNameText), UserName (userNameText))
+import Messaging.Shared.Conversation (ConversationName (conversationNameText))
+import Messaging.Shared.User (UserName (userNameText))
 
 addToConversation :: UserName -> ConversationName -> App ()
 addToConversation userName convName = do

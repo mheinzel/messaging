@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Messaging.Server where
 
@@ -11,7 +11,8 @@ import Messaging.Server.App (State, initialState, runApp)
 import qualified Messaging.Server.Auth as Auth
 import qualified Messaging.Server.Conversation as Conv
 import qualified Messaging.Server.Delivery as Delivery
-import Messaging.Shared (UserName, conversationNameGeneral)
+import Messaging.Shared.Conversation (conversationNameGeneral)
+import Messaging.Shared.User (UserName)
 import qualified Network.WebSockets as WS
 
 runServer :: IO ()

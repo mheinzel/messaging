@@ -18,28 +18,28 @@ import qualified Data.Text.IO as Text (putStrLn)
 import Messaging.Server.App (App, Conversation (Conversation, conversationMembers), activeConversations)
 import qualified Messaging.Server.Delivery as Delivery
 import Messaging.Shared.Conversation (ConversationName (conversationNameText))
-import Messaging.Shared.User (UserName (userNameText))
+import Messaging.Shared.User (User(..), UserID, UserName (userNameText))
 
-addToConversation :: UserName -> ConversationName -> App ()
-addToConversation userName convName = do
+addToConversation :: User -> ConversationName -> App ()
+addToConversation user convName = do
   convs <- asks activeConversations
-  let newConv = Conversation convName (Set.singleton userName)
+  let newConv = Conversation convName (Set.singleton $ userID user)
   liftIO $
     atomically $ do
       -- insert if there, merge if already existing
       modifyTVar convs (Map.insertWith addUser convName newConv)
 
   -- also announce arrival
-  broadcast convName $ userNameText userName <> " JOINED"
+  broadcast convName $ userNameText (userName user) <> " JOINED"
   where
     addUser :: Conversation -> Conversation -> Conversation
     addUser new old =
       old {conversationMembers = conversationMembers new <> conversationMembers old}
 
-removeFromConversation :: UserName -> ConversationName -> App ()
-removeFromConversation userName convName = do
+removeFromConversation :: User -> ConversationName -> App ()
+removeFromConversation user convName = do
   -- also announce leaving
-  broadcast convName $ userNameText userName <> " LEFT"
+  broadcast convName $ userNameText (userName user) <> " LEFT"
 
   convs <- asks activeConversations
   liftIO $
@@ -49,7 +49,7 @@ removeFromConversation userName convName = do
   where
     removeUser :: Conversation -> Maybe Conversation
     removeUser old =
-      let newMembers = Set.delete userName (conversationMembers old)
+      let newMembers = Set.delete (userID user) (conversationMembers old)
        in if Set.null newMembers
             then Nothing
             else Just (old {conversationMembers = newMembers})
@@ -71,7 +71,7 @@ broadcast convName msgPart = do
   -- TODO: remove missing users from conversation
   pure ()
 
-getConversationMembers :: ConversationName -> App [UserName]
+getConversationMembers :: ConversationName -> App [UserID]
 getConversationMembers convName = do
   convs <- asks activeConversations
   convMap <- liftIO $ readTVarIO convs

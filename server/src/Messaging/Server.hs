@@ -12,7 +12,7 @@ import qualified Messaging.Server.Auth as Auth
 import qualified Messaging.Server.Conversation as Conv
 import qualified Messaging.Server.Delivery as Delivery
 import Messaging.Shared.Conversation (conversationNameGeneral)
-import Messaging.Shared.User (UserName)
+import Messaging.Shared.User (User (userID, userName), UserID)
 import qualified Network.WebSockets as WS
 
 runServer :: IO ()
@@ -23,11 +23,11 @@ runServer = do
 
 app :: State -> WS.ServerApp
 app state pending = do
-  withAcceptedConnection state pending $ \userName conn ->
+  withAcceptedConnection state pending $ \user conn ->
     WS.withPingThread conn 30 (return ()) $ do
-      handleConnection state userName conn
+      handleConnection state user conn
 
-withAcceptedConnection :: State -> WS.PendingConnection -> (UserName -> WS.Connection -> IO ()) -> IO ()
+withAcceptedConnection :: State -> WS.PendingConnection -> (User -> WS.Connection -> IO ()) -> IO ()
 withAcceptedConnection state pending action =
   runApp state (Auth.authenticate pending) >>= \case
     Left Auth.MissingUserName ->
@@ -36,36 +36,36 @@ withAcceptedConnection state pending action =
       WS.rejectRequest pending "Invalid Username"
     Left Auth.UserNameTaken ->
       WS.rejectRequest pending "UserName taken"
-    Right userName ->
+    Right user ->
       -- for debugging
       flip Exc.withException (print @Exc.SomeException) $
         Exc.bracket
-          (acceptConnection state userName pending)
+          (acceptConnection state (userID user) pending)
           -- TODO: we shouldn't do a bunch of IO in the cleanup part of 'bracket'.
           -- Catch exceptions manually or use some async work queue?
-          (cleanUpConnection state userName)
-          (action userName)
+          (cleanUpConnection state user)
+          (action user)
 
-acceptConnection :: State -> UserName -> WS.PendingConnection -> IO WS.Connection
-acceptConnection state userName pending = do
+acceptConnection :: State -> UserID -> WS.PendingConnection -> IO WS.Connection
+acceptConnection state uID pending = do
   conn <- WS.acceptRequest pending
-  runApp state $ Delivery.addConnection userName conn
+  runApp state $ Delivery.addConnection uID conn
   pure conn
 
-cleanUpConnection :: State -> UserName -> WS.Connection -> IO ()
-cleanUpConnection state userName _conn = runApp state $ do
-  Delivery.removeConnection userName
+cleanUpConnection :: State -> User -> WS.Connection -> IO ()
+cleanUpConnection state user _conn = runApp state $ do
+  Delivery.removeConnection $ userID user
 
   -- Later, we'll have to fetch a list of conversations the user is part of.
   let convName = conversationNameGeneral
-  Conv.removeFromConversation userName convName
+  Conv.removeFromConversation user convName
 
-handleConnection :: State -> UserName -> WS.Connection -> IO ()
-handleConnection state userName conn = runApp state $ do
+handleConnection :: State -> User -> WS.Connection -> IO ()
+handleConnection state user conn = runApp state $ do
   -- For now just pretend there's only one conversation.
   let convName = conversationNameGeneral
-  Conv.addToConversation userName convName
+  Conv.addToConversation user convName
 
   forever $ do
     received <- liftIO $ WS.receiveData conn
-    Conv.broadcastMessage userName convName received
+    Conv.broadcastMessage (userName user) convName received

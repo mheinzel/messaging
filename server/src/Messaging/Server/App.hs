@@ -11,7 +11,7 @@ import Control.Monad.Trans.Reader (ReaderT, runReaderT)
 import Data.Map.Strict (Map)
 import Data.Set (Set)
 import Messaging.Shared.Conversation (ConversationName)
-import Messaging.Shared.User (User, UserName)
+import Messaging.Shared.User (User, UserID, UserName)
 import qualified Network.WebSockets as WS
 
 newtype App a = App {unApp :: ReaderT State IO a}
@@ -22,22 +22,21 @@ runApp s = flip runReaderT s . unApp
 
 data State = State
   { activeConversations :: TVar (Map ConversationName Conversation),
-    connectedUsers :: TVar (Map UserName ConnectedUser)
-  }
-
--- | Currently only users exist that are currently connected. Later, we might
--- relax that assumption and make the 'userConnection' field optional.
-data ConnectedUser = ConnectedUser
-  { connectedUserName :: UserName,
-    userConnection :: WS.Connection
+    connectedUsers :: TVar (Map UserID WS.Connection),
+    users :: TVar (Map UserID User),
+    takenUserNames :: TVar (Set UserName)
   }
 
 data Conversation = Conversation
   { conversationName :: ConversationName,
-    conversationMembers :: Set UserName
+    conversationMembers :: Set UserID
   }
   deriving stock (Show)
 
 initialState :: IO State
 initialState =
-  State <$> newTVarIO mempty <*> newTVarIO mempty
+  State
+    <$> newTVarIO mempty
+    <*> newTVarIO mempty
+    <*> newTVarIO mempty
+    <*> newTVarIO mempty

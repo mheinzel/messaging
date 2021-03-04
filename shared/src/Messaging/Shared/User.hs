@@ -6,16 +6,17 @@ module Messaging.Shared.User where
 import qualified Data.Char as Char
 import Data.Text (Text)
 import qualified Data.Text as Text
-import Data.UUID (UUID (..))
+import Data.UUID (UUID)
 
 newtype UserID = UserID {getID :: UUID}
+  deriving stock (Eq, Ord, Show)
 
 newtype UserName = UserName {userNameText :: Text}
   deriving stock (Eq, Ord, Show)
 
 data User = User
   { userName :: UserName,
-    identifier :: UserID
+    userID :: UserID
   }
 
 mkUserName :: Text -> Maybe UserName

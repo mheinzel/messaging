@@ -10,41 +10,40 @@ import Data.Foldable (traverse_)
 import qualified Data.Map.Strict as Map
 import Data.Maybe (isJust)
 import Data.Text (Text)
-import Messaging.Server.App (App, ConnectedUser (ConnectedUser, userConnection), State (connectedUsers))
-import Messaging.Shared.User (UserName)
+import Messaging.Server.App (App, State (connectedUsers))
+import Messaging.Shared.User (UserID)
 import qualified Network.WebSockets as WS
 
-addConnection :: UserName -> WS.Connection -> App ()
-addConnection userName conn = do
-  let user = ConnectedUser userName conn
+addConnection :: UserID -> WS.Connection -> App ()
+addConnection userID conn = do
   users <- asks connectedUsers
-  liftIO $ atomically $ modifyTVar users (Map.insert userName user)
+  liftIO $ atomically $ modifyTVar users (Map.insert userID conn)
 
-removeConnection :: UserName -> App ()
-removeConnection userName = do
+removeConnection :: UserID -> App ()
+removeConnection userID = do
   users <- asks connectedUsers
-  liftIO $ atomically $ modifyTVar users (Map.delete userName)
+  liftIO $ atomically $ modifyTVar users (Map.delete userID)
 
-isConnected :: UserName -> App Bool
-isConnected userName = do
+isConnected :: UserID -> App Bool
+isConnected userID = do
   users <- asks connectedUsers
-  fmap (isJust . Map.lookup userName) $ liftIO $ readTVarIO users
+  fmap (isJust . Map.lookup userID) $ liftIO $ readTVarIO users
 
-newtype MissingConnections = MissingConnections {missingConnectionUsers :: [UserName]}
+newtype MissingConnections = MissingConnections {missingConnectionUsers :: [UserID]}
 
-deliver :: [UserName] -> Text -> App MissingConnections
+deliver :: [UserID] -> Text -> App MissingConnections
 deliver users msg = do
   (missing, conns) <- lookupConnections users
   -- Could be done concurrently.
   liftIO $ traverse_ (flip WS.sendTextData msg) conns
   pure missing
 
-lookupConnections :: [UserName] -> App (MissingConnections, [WS.Connection])
+lookupConnections :: [UserID] -> App (MissingConnections, [WS.Connection])
 lookupConnections users = do
   conns <- asks connectedUsers
   connectionMap <- liftIO $ readTVarIO conns
   let (missing, found) = partitionEithers . flip map users $ \u ->
         case Map.lookup u connectionMap of
-          Just c -> Right (userConnection c)
+          Just c -> Right c
           Nothing -> Left u
   pure (MissingConnections missing, found)

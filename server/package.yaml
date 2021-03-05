@@ -27,8 +27,8 @@ dependencies:
 - stm
 - text
 - transformers
-- websockets
 - uuid
+- websockets
 
 ghc-options:
 - -Wall

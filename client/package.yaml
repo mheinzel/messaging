@@ -23,8 +23,8 @@ dependencies:
 - mtl
 - network
 - text
-- websockets
 - uuid
+- websockets
 
 ghc-options:
 - -Wall

@@ -55,8 +55,8 @@ removeFromConversation user convName = do
             else Just (old {conversationMembers = newMembers})
 
 broadcastMessage :: UserName -> ConversationName -> Text -> App ()
-broadcastMessage userName convName msg = do
-  broadcast convName $ userNameText userName <> ": " <> msg
+broadcastMessage uName convName msg = do
+  broadcast convName $ userNameText uName <> ": " <> msg
 
 broadcast :: ConversationName -> Text -> App ()
 broadcast convName msgPart = do

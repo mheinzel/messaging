@@ -56,6 +56,10 @@ cleanUpConnection :: State -> User -> WS.Connection -> IO ()
 cleanUpConnection state user _conn = runApp state $ do
   Delivery.removeConnection $ userID user
 
+  -- Later the user name won't be tied to the connection anymore and will have
+  -- to be cleaned up elsewhere.
+  Auth.freeUserName $ userName user
+
   -- Later, we'll have to fetch a list of conversations the user is part of.
   let convName = conversationNameGeneral
   Conv.removeFromConversation user convName

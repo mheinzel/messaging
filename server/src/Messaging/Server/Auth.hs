@@ -5,6 +5,7 @@
 module Messaging.Server.Auth
   ( AuthError (..),
     authenticate,
+    freeUserName,
   )
 where
 
@@ -12,7 +13,7 @@ import Control.Concurrent.STM (atomically, modifyTVar, readTVar)
 import Control.Monad ((<=<))
 import Control.Monad.Reader.Class (asks)
 import Control.Monad.Trans (liftIO)
-import qualified Data.Set as S (insert, member)
+import qualified Data.Set as S (insert, member, delete)
 import qualified Data.Text.Encoding as Text (decodeUtf8')
 import qualified Data.UUID.V4 as U (nextRandom)
 import Messaging.Server.App (App, takenUserNames)
@@ -51,6 +52,12 @@ claimUserName name = do
         else do
           modifyTVar takenNames (S.insert name)
           return SuccessfullyClaimed
+
+freeUserName :: UserName -> App ()
+freeUserName name = do
+    takenNames <- asks takenUserNames
+    liftIO $ atomically $ do
+        modifyTVar takenNames $ S.delete name
 
 addError :: e -> Maybe a -> Either e a
 addError err = maybe (Left err) Right

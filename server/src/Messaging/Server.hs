@@ -12,6 +12,7 @@ import qualified Messaging.Server.Auth as Auth
 import qualified Messaging.Server.Conversation as Conv
 import qualified Messaging.Server.Delivery as Delivery
 import Messaging.Shared.Conversation (conversationNameGeneral)
+import Messaging.Shared.Request (DeserializeError (..), Request (..), deserialize)
 import Messaging.Shared.User (User (userID, userName), UserID)
 import qualified Network.WebSockets as WS
 
@@ -72,4 +73,7 @@ handleConnection state user conn = runApp state $ do
 
   forever $ do
     received <- liftIO $ WS.receiveData conn
-    Conv.broadcastMessage (userName user) convName received
+    let request = deserialize received
+    case request of
+      Right (SendMessage msg) -> Conv.broadcastMessage (userName user) convName msg
+      Left (DeserializeError _ msg) -> liftIO $ putStrLn msg

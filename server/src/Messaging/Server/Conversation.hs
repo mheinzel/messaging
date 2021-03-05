@@ -18,6 +18,7 @@ import qualified Data.Text.IO as Text (putStrLn)
 import Messaging.Server.App (App, Conversation (Conversation, conversationMembers), activeConversations)
 import qualified Messaging.Server.Delivery as Delivery
 import Messaging.Shared.Conversation (ConversationName (conversationNameText))
+import Messaging.Shared.Request.Message (Message (..))
 import Messaging.Shared.User (User (..), UserID, UserName (userNameText))
 
 addToConversation :: User -> ConversationName -> App ()
@@ -54,9 +55,9 @@ removeFromConversation user convName = do
             then Nothing
             else Just (old {conversationMembers = newMembers})
 
-broadcastMessage :: UserName -> ConversationName -> Text -> App ()
+broadcastMessage :: UserName -> ConversationName -> Message -> App ()
 broadcastMessage uName convName msg = do
-  broadcast convName $ userNameText uName <> ": " <> msg
+  broadcast convName $ userNameText uName <> ": " <> content msg
 
 broadcast :: ConversationName -> Text -> App ()
 broadcast convName msgPart = do

@@ -10,6 +10,8 @@ import qualified Data.Text as T
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text (encodeUtf8)
 import qualified Data.Text.IO as T
+import Messaging.Shared.Request (Request (..), serialize)
+import Messaging.Shared.Request.Message (Message (..))
 import Messaging.Shared.User (mkUserName, userNameText)
 import Network.Socket (withSocketsDo)
 import qualified Network.WebSockets as WS
@@ -51,5 +53,6 @@ sendThread conn = do
   -- Read from stdin and write to WS
   line <- T.getLine
   unless (T.null line) $ do
-    WS.sendTextData conn line
+    let request = serialize $ SendMessage $ Message line
+    WS.sendTextData conn request
     sendThread conn

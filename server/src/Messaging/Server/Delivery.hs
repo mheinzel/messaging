@@ -6,11 +6,11 @@ import Control.Concurrent.STM (atomically, modifyTVar, readTVarIO)
 import Control.Monad.Reader.Class (asks)
 import Control.Monad.Trans (liftIO)
 import Data.Either (partitionEithers)
-import Data.Foldable (traverse_)
+import Data.Foldable (for_)
 import qualified Data.Map.Strict as Map
 import Data.Maybe (isJust)
-import Data.Text (Text)
 import Messaging.Server.App (App, State (connectedUsers))
+import qualified Messaging.Shared.Response as Res
 import Messaging.Shared.User (UserID)
 import qualified Network.WebSockets as WS
 
@@ -31,11 +31,12 @@ isConnected userID = do
 
 newtype MissingConnections = MissingConnections {missingConnectionUsers :: [UserID]}
 
-deliver :: [UserID] -> Text -> App MissingConnections
+deliver :: [UserID] -> Res.Response -> App MissingConnections
 deliver users msg = do
   (missing, conns) <- lookupConnections users
   -- Could be done concurrently.
-  liftIO $ traverse_ (flip WS.sendTextData msg) conns
+  liftIO $ for_ conns $ \conn ->
+    WS.sendTextData conn (Res.serialize msg)
   pure missing
 
 lookupConnections :: [UserID] -> App (MissingConnections, [WS.Connection])

@@ -80,4 +80,4 @@ handleConnection state user conn = runApp state $ do
       Left err ->
         liftIO $ putStrLn (Req.errorMessage err)
       Right (Req.SendMessage msg) ->
-        Conv.broadcastMessage (userName user) convName msg
+        Conv.broadcastMessage user msg

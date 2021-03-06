@@ -11,9 +11,11 @@ where
 import qualified Data.Aeson as Aeson
 import Data.Text (Text)
 import GHC.Generics (Generic)
+import Messaging.Shared.Conversation (ConversationName)
 
 data Message = Message
-  { messageContent :: Text
+  { messageConversation :: ConversationName,
+    messageContent :: Text
   }
   deriving stock (Show, Generic)
   deriving anyclass (Aeson.ToJSON, Aeson.FromJSON)

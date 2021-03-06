@@ -13,13 +13,12 @@ import Control.Monad.Trans (MonadIO (liftIO))
 import Data.Foldable (toList)
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
-import Data.Text (Text)
-import qualified Data.Text.IO as Text (putStrLn)
 import Messaging.Server.App (App, Conversation (Conversation, conversationMembers), activeConversations)
 import qualified Messaging.Server.Delivery as Delivery
-import Messaging.Shared.Conversation (ConversationName (conversationNameText))
-import Messaging.Shared.Message (Message (messageContent))
-import Messaging.Shared.User (User (..), UserID, UserName (userNameText))
+import qualified Messaging.Shared.Response as Res
+import Messaging.Shared.Conversation (ConversationName)
+import Messaging.Shared.Message (Message (..))
+import Messaging.Shared.User (User (userID), UserID)
 
 addToConversation :: User -> ConversationName -> App ()
 addToConversation user convName = do
@@ -31,7 +30,7 @@ addToConversation user convName = do
       modifyTVar convs (Map.insertWith addUser convName newConv)
 
   -- also announce arrival
-  broadcast convName $ userNameText (userName user) <> " JOINED"
+  broadCastJoined user convName
   where
     addUser :: Conversation -> Conversation -> Conversation
     addUser new old =
@@ -40,7 +39,7 @@ addToConversation user convName = do
 removeFromConversation :: User -> ConversationName -> App ()
 removeFromConversation user convName = do
   -- also announce leaving
-  broadcast convName $ userNameText (userName user) <> " LEFT"
+  broadcastLeft user convName
 
   convs <- asks activeConversations
   liftIO $
@@ -55,20 +54,25 @@ removeFromConversation user convName = do
             then Nothing
             else Just (old {conversationMembers = newMembers})
 
-broadcastMessage :: UserName -> ConversationName -> Message -> App ()
-broadcastMessage uName convName msg = do
-  broadcast convName $ userNameText uName <> ": " <> messageContent msg
+broadcastMessage :: User -> Message -> App ()
+broadcastMessage user msg =
+  broadcast (messageConversation msg) $ Res.ReceivedMessage user msg
 
-broadcast :: ConversationName -> Text -> App ()
-broadcast convName msgPart = do
-  -- At some point, we want to properly return the conversation, so messages
-  -- for different conversations can be displayed separately on the client.
-  let msg = conversationNameText convName <> " | " <> msgPart
+broadCastJoined :: User -> ConversationName -> App ()
+broadCastJoined user conv =
+  broadcast conv $ Res.JoinedConversation user conv
+
+broadcastLeft :: User -> ConversationName -> App ()
+broadcastLeft user conv =
+  broadcast conv $ Res.LeftConversation user conv
+
+broadcast :: ConversationName -> Res.Response -> App ()
+broadcast convName response = do
   -- TODO: introduce proper logging
-  liftIO $ Text.putStrLn msg
+  liftIO $ print response
 
   users <- getConversationMembers convName
-  _missing <- Delivery.deliver users msg
+  _missing <- Delivery.deliver users response
   -- TODO: remove missing users from conversation
   pure ()
 

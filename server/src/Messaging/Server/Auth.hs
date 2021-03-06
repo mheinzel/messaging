@@ -15,9 +15,9 @@ import Control.Monad.Reader.Class (asks)
 import Control.Monad.Trans (liftIO)
 import qualified Data.Set as S (delete, insert, member)
 import qualified Data.Text.Encoding as Text (decodeUtf8')
-import qualified Data.UUID.V4 as U (nextRandom)
+import qualified Data.UUID.V4 as UUID
 import Messaging.Server.App (App, takenUserNames)
-import Messaging.Shared.User (User (..), UserID (..), UserName, mkUserName)
+import Messaging.Shared.User (User (User), UserID (UserID), UserName, mkUserName)
 import qualified Network.WebSockets as WS
 
 data AuthError
@@ -32,7 +32,9 @@ authenticate pending =
     Right name ->
       claimUserName name >>= \case
         AlreadyTaken -> pure $ Left UserNameTaken
-        SuccessfullyClaimed -> liftIO U.nextRandom >>= pure . Right . User name . UserID
+        SuccessfullyClaimed -> do
+          userID <- UserID <$> liftIO UUID.nextRandom
+          pure $ Right (User userID name)
   where
     parseUserName =
       addError InvalidUserName . mkUserName

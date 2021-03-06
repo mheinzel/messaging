@@ -15,9 +15,9 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import Messaging.Server.App (App, Conversation (Conversation, conversationMembers), activeConversations)
 import qualified Messaging.Server.Delivery as Delivery
-import qualified Messaging.Shared.Response as Res
 import Messaging.Shared.Conversation (ConversationName)
 import Messaging.Shared.Message (Message (..))
+import qualified Messaging.Shared.Response as Res
 import Messaging.Shared.User (User (userID), UserID)
 
 addToConversation :: User -> ConversationName -> App ()

@@ -15,9 +15,9 @@ import qualified Data.Aeson as Aeson
 import Data.Bifunctor (first)
 import Data.ByteString.Lazy (ByteString)
 import GHC.Generics (Generic)
+import Messaging.Shared.Conversation (ConversationName)
 import Messaging.Shared.Message (Message)
 import Messaging.Shared.User (User)
-import Messaging.Shared.Conversation (ConversationName)
 
 data Response
   = ReceivedMessage User Message

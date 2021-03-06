@@ -35,7 +35,7 @@ deliver :: [UserID] -> Res.Response -> App MissingConnections
 deliver users msg = do
   (missing, conns) <- lookupConnections users
   -- Could be done concurrently.
-  liftIO $ for_ conns $ \conn ->
+  liftIO . for_ conns $ \conn ->
     WS.sendTextData conn (Res.serialize msg)
   pure missing
 

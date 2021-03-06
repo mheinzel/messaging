@@ -27,7 +27,7 @@ dependencies:
 - websockets
 
 ghc-options:
-- -Wall
+- -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wpartial-fields -Wredundant-constraints
 
 library:
   source-dirs: src

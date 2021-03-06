@@ -6,11 +6,10 @@ module Messaging.Client where
 import Control.Concurrent (forkIO)
 import Control.Monad (forever, unless)
 import Data.Text (Text)
-import qualified Data.Text as T
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text (encodeUtf8)
-import qualified Data.Text.IO as T
-import Messaging.Shared.Conversation (conversationNameGeneral, ConversationName (conversationNameText))
+import qualified Data.Text.IO as Text (getLine, putStrLn)
+import Messaging.Shared.Conversation (ConversationName (conversationNameText), conversationNameGeneral)
 import Messaging.Shared.Message (Message (..))
 import qualified Messaging.Shared.Request as Req
 import qualified Messaging.Shared.Response as Res
@@ -43,7 +42,6 @@ client conn = do
 
   _threadId <- forkIO $ recvThread conn
   sendThread conn
-  WS.sendClose conn ("Bye!" :: Text)
 
 recvThread :: WS.Connection -> IO ()
 recvThread conn = forever $ do
@@ -60,7 +58,7 @@ recvThread conn = forever $ do
   where
     printInConversation :: ConversationName -> Text -> IO ()
     printInConversation conv txt =
-      T.putStrLn $ conversationNameText conv <> " | " <> txt
+      Text.putStrLn $ conversationNameText conv <> " | " <> txt
 
     printError :: Res.DeserializeError -> IO ()
     printError err =
@@ -68,11 +66,17 @@ recvThread conn = forever $ do
 
 sendThread :: WS.Connection -> IO ()
 sendThread conn = do
-  -- Read from stdin and write to WS
-  line <- T.getLine
-  unless (T.null line) $ do
+  handleInput
+  -- We might want to also explicitly leave our conversations here.
+  WS.sendClose conn ("Bye!" :: Text)
+  where
     -- For now assume everything is happening in there
-    let conversation = conversationNameGeneral
-    let request = Req.SendMessage $ Message conversation line
-    WS.sendTextData conn (Req.serialize request)
-    sendThread conn
+    conversation = conversationNameGeneral
+
+    -- Read from stdin and write to websocket
+    handleInput = do
+      line <- Text.getLine
+      unless (Text.null line) $ do
+        let request = Req.SendMessage $ Message conversation line
+        WS.sendTextData conn (Req.serialize request)
+        handleInput -- loop

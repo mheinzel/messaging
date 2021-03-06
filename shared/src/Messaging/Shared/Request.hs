@@ -1,20 +1,30 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE StrictData #-}
 
-module Messaging.Shared.Request where
+module Messaging.Shared.Request
+  ( Request (..),
+    DeserializeError (..),
+    deserialize,
+    serialize,
+  )
+where
 
 import qualified Data.Aeson as Aeson
 import Data.Bifunctor (first)
 import Data.ByteString.Lazy (ByteString)
 import GHC.Generics (Generic)
-import Messaging.Shared.Request.Message (Message)
+import Messaging.Shared.Message (Message)
 
 data Request = SendMessage Message
   deriving stock (Show, Generic)
   deriving anyclass (Aeson.ToJSON, Aeson.FromJSON)
 
-data DeserializeError = DeserializeError ByteString String
+data DeserializeError = DeserializeError
+  { invalidInput :: ByteString,
+    errorMessage :: String
+  }
   deriving stock (Show)
 
 serialize :: Request -> ByteString

@@ -1,6 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Messaging.Server where
 
@@ -12,7 +11,7 @@ import qualified Messaging.Server.Auth as Auth
 import qualified Messaging.Server.Conversation as Conv
 import qualified Messaging.Server.Delivery as Delivery
 import Messaging.Shared.Conversation (conversationNameGeneral)
-import Messaging.Shared.Request (DeserializeError (..), Request (..), deserialize)
+import qualified Messaging.Shared.Request as Req
 import Messaging.Shared.User (User (userID, userName), UserID)
 import qualified Network.WebSockets as WS
 
@@ -38,14 +37,18 @@ withAcceptedConnection state pending action =
     Left Auth.UserNameTaken ->
       WS.rejectRequest pending "UserName taken"
     Right user ->
-      -- for debugging
-      flip Exc.withException (print @Exc.SomeException) $
+      logExceptions $
         Exc.bracket
           (acceptConnection state (userID user) pending)
           -- TODO: we shouldn't do a bunch of IO in the cleanup part of 'bracket'.
           -- Catch exceptions manually or use some async work queue?
           (cleanUpConnection state user)
           (action user)
+  where
+    -- for debugging
+    logExceptions :: IO a -> IO a
+    logExceptions = flip Exc.withException $ \e ->
+      putStrLn $ "exception: " <> show (e :: Exc.SomeException)
 
 acceptConnection :: State -> UserID -> WS.PendingConnection -> IO WS.Connection
 acceptConnection state uID pending = do
@@ -73,7 +76,8 @@ handleConnection state user conn = runApp state $ do
 
   forever $ do
     received <- liftIO $ WS.receiveData conn
-    let request = deserialize received
-    case request of
-      Right (SendMessage msg) -> Conv.broadcastMessage (userName user) convName msg
-      Left (DeserializeError _ msg) -> liftIO $ putStrLn msg
+    case Req.deserialize received of
+      Left err ->
+        liftIO $ putStrLn (Req.errorMessage err)
+      Right (Req.SendMessage msg) ->
+        Conv.broadcastMessage (userName user) convName msg

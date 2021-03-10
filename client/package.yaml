@@ -19,11 +19,16 @@ description:         Please see the README on GitHub at <https://github.com/mhei
 
 dependencies:
 - base >= 4.7 && < 5
+- brick
 - messaging-shared
+- microlens
+- microlens-th
 - mtl
 - network
 - text
 - uuid
+- vector
+- vty
 - websockets
 
 ghc-options:

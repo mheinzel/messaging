@@ -3,12 +3,14 @@
 
 module Messaging.Client where
 
+import qualified Brick.Main as Brick
 import Control.Concurrent (forkIO)
 import Control.Monad (forever, unless)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text (encodeUtf8)
 import qualified Data.Text.IO as Text (getLine, putStrLn)
+import qualified Messaging.Client.UI as UI
 import Messaging.Shared.Conversation (ConversationName (conversationNameText), conversationNameGeneral)
 import Messaging.Shared.Message (Message (..))
 import qualified Messaging.Shared.Request as Req
@@ -18,6 +20,9 @@ import Network.Socket (withSocketsDo)
 import qualified Network.WebSockets as WS
 import qualified System.Environment as Env
 import qualified System.Exit as Exit
+
+runUI :: IO ()
+runUI = () <$ Brick.defaultMain UI.theApp UI.initialState
 
 runClient :: IO ()
 runClient = do

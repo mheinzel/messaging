@@ -27,7 +27,6 @@ dependencies:
 - mtl
 - network
 - text
-- uuid
 - vector
 - vty
 - websockets

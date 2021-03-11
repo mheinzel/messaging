@@ -2,7 +2,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Messaging.Client.UI where
+module Messaging.Client.Terminal.UI where
 
 import qualified Brick.AttrMap as A
 import qualified Brick.Focus as F

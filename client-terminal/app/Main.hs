@@ -1,6 +1,6 @@
 module Main where
 
-import Messaging.Client (runUI)
+import Messaging.Client.Terminal (runUI)
 
 main :: IO ()
 main = runUI

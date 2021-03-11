@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Messaging.Client where
+module Messaging.Client.Terminal where
 
 import qualified Brick.Main as Brick
 import Control.Concurrent (forkIO)
@@ -10,7 +10,7 @@ import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text (encodeUtf8)
 import qualified Data.Text.IO as Text (getLine, putStrLn)
-import qualified Messaging.Client.UI as UI
+import qualified Messaging.Client.Terminal.UI as UI
 import Messaging.Shared.Conversation (ConversationName (conversationNameText), conversationNameGeneral)
 import Messaging.Shared.Message (Message (..))
 import qualified Messaging.Shared.Request as Req

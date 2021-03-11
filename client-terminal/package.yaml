@@ -1,15 +1,15 @@
-name:                messaging-client
+name:                messaging-client-terminal
 version:             0.1.0.0
-github:              "githubuser/messaging"
+github:              "mheinzel/messaging"
 license:             BSD3
-author:              "Luciano Platjouw, Matthias Heinzel, Nathan Oerlemans"
+author:              "Luciano Platjouw, Matthias Heinzel, Nathan Oerlemans, Bart Remmers"
 maintainer:          "mheinzel@posteo.de"
-copyright:           "2021 Luciano Platjouw, Matthias Heinzel, Nathan Oerlemans"
+copyright:           "2021 Luciano Platjouw, Matthias Heinzel, Nathan Oerlemans, Bart Remmers"
 
 extra-source-files:
 - README.md
 
-synopsis:            Messaging client
+synopsis:            Messaging terminal client
 category:            Web
 
 # To avoid duplicated efforts in documentation and dealing with the
@@ -38,7 +38,7 @@ library:
   source-dirs: src
 
 executables:
-  messaging-client-exe:
+  messaging-client-terminal-exe:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -47,4 +47,4 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - base
-    - messaging-client
+    - messaging-client-terminal

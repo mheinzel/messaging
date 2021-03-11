@@ -21,8 +21,17 @@ import qualified Network.WebSockets as WS
 import qualified System.Environment as Env
 import qualified System.Exit as Exit
 
+-- TODO: merge into runClient
 runUI :: IO ()
 runUI = () <$ Brick.defaultMain UI.theApp UI.initialState
+
+{-
+    (putOutgoing, getOutgoing) <- mkChan
+    (putIncoming, getIncoming) <- mkChan
+    st <- M.customMain getIncoming (theApp putOutgoing) initialState
+    recvThread putIncoming
+    sendThread getOutgoing
+-}
 
 runClient :: IO ()
 runClient = do

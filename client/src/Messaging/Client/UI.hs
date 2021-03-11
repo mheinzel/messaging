@@ -10,13 +10,7 @@ import qualified Brick.Main as M
 import qualified Brick.Types as T
 import Brick.Util (on)
 import qualified Brick.Widgets.Center as C
-import Brick.Widgets.Core
-  ( hLimit,
-    str,
-    vLimit,
-    (<+>),
-    (<=>),
-  )
+import Brick.Widgets.Core (hLimit, str, vLimit, (<+>), (<=>))
 import qualified Brick.Widgets.Edit as E
 import qualified Graphics.Vty as V
 import Lens.Micro
@@ -34,6 +28,16 @@ data St = St
   }
 
 makeLenses ''St
+
+theApp :: M.App St e Name
+theApp =
+  M.App
+    { M.appDraw = drawUI,
+      M.appChooseCursor = appCursor,
+      M.appHandleEvent = appEvent,
+      M.appStartEvent = return,
+      M.appAttrMap = const theMap
+    }
 
 drawUI :: St -> [T.Widget Name]
 drawUI st = [ui]
@@ -79,29 +83,3 @@ theMap =
 
 appCursor :: St -> [T.CursorLocation Name] -> Maybe (T.CursorLocation Name)
 appCursor = F.focusRingCursor (^. focusRing)
-
-theApp :: M.App St e Name
-theApp =
-  M.App
-    { M.appDraw = drawUI,
-      M.appChooseCursor = appCursor,
-      M.appHandleEvent = appEvent,
-      M.appStartEvent = return,
-      M.appAttrMap = const theMap
-    }
-
-main :: IO ()
-main = do
-  st <- M.defaultMain theApp initialState
-  putStrLn "In input 1 you entered:\n"
-  putStrLn $ unlines $ E.getEditContents $ st ^. edit1
-  putStrLn "In input 2 you entered:\n"
-  putStrLn $ unlines $ E.getEditContents $ st ^. edit2
-
-{-
-    (putOutgoing, getOutgoing) <- mkChan
-    (putIncoming, getIncoming) <- mkChan
-    st <- M.customMain getIncoming (theApp putOutgoing) initialState
-    recvThread putIncoming
-    sendThread getOutgoing
--}

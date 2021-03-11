@@ -9,22 +9,28 @@ import qualified Brick.Focus as F
 import qualified Brick.Main as M
 import qualified Brick.Types as T
 import Brick.Util (on)
-import qualified Brick.Widgets.Center as C
-import Brick.Widgets.Core (hLimit, str, vLimit, (<+>), (<=>))
+import Brick.Widgets.Core (txt, vBox, vLimit)
 import qualified Brick.Widgets.Edit as E
+import qualified Brick.Widgets.List as List
+import Data.Foldable (fold)
+import Data.Text (Text)
+import qualified Data.Text as Text
 import qualified Graphics.Vty as V
 import Lens.Micro
 import Lens.Micro.TH
+import Messaging.Shared.Conversation as Conv
+import Messaging.Shared.Message (Message)
+import qualified Messaging.Shared.Message as Msg
 
 data Name
-  = Edit1
-  | Edit2
+  = History
+  | Edit
   deriving (Ord, Show, Eq)
 
 data St = St
   { _focusRing :: F.FocusRing Name,
-    _edit1 :: E.Editor String Name,
-    _edit2 :: E.Editor String Name
+    _history :: List.List Name Message,
+    _edit :: E.Editor Text Name
   }
 
 makeLenses ''St
@@ -42,16 +48,16 @@ theApp =
 drawUI :: St -> [T.Widget Name]
 drawUI st = [ui]
   where
-    e1 = F.withFocusRing (st ^. focusRing) (E.renderEditor (str . unlines)) (st ^. edit1)
-    e2 = F.withFocusRing (st ^. focusRing) (E.renderEditor (str . unlines)) (st ^. edit2)
+    editor = F.withFocusRing (st ^. focusRing) (E.renderEditor (txt . Text.unlines)) (st ^. edit)
 
     ui =
-      C.center $
-        (str "Input 1 (unlimited): " <+> (hLimit 30 $ vLimit 5 e1))
-          <=> str " "
-          <=> (str "Input 2 (limited to 2 lines): " <+> (hLimit 30 e2))
-          <=> str " "
-          <=> str "Press Tab to switch between editors, Esc to quit."
+      vBox $
+        [ F.withFocusRing (st ^. focusRing) (List.renderList drawMessage) (st ^. history),
+          vLimit 5 editor
+        ]
+
+drawMessage :: Bool -> Message -> T.Widget n
+drawMessage _ = txt . Msg.messageContent
 
 appEvent :: St -> T.BrickEvent Name e -> T.EventM Name (T.Next St)
 appEvent st (T.VtyEvent ev) =
@@ -59,19 +65,29 @@ appEvent st (T.VtyEvent ev) =
     V.EvKey V.KEsc [] -> M.halt st
     V.EvKey (V.KChar '\t') [] -> M.continue $ st & focusRing %~ F.focusNext
     V.EvKey V.KBackTab [] -> M.continue $ st & focusRing %~ F.focusPrev
+    V.EvKey V.KEnter [] -> do
+      let msg = Msg.Message Conv.conversationNameGeneral (fold (E.getEditContents (st ^. edit)))
+          moveToEnd = List.listMoveTo (-1)
+          appendMsg l = List.listInsert (length l) msg l
+      M.continue $ st
+        & history %~ moveToEnd . appendMsg
+        & edit .~ emptyEditor
     _ ->
       M.continue =<< case F.focusGetCurrent (st ^. focusRing) of
-        Just Edit1 -> T.handleEventLensed st edit1 E.handleEditorEvent ev
-        Just Edit2 -> T.handleEventLensed st edit2 E.handleEditorEvent ev
+        Just History -> return st
+        Just Edit -> T.handleEventLensed st edit E.handleEditorEvent ev
         Nothing -> return st
 appEvent st _ = M.continue st
 
 initialState :: St
 initialState =
   St
-    (F.focusRing [Edit1, Edit2])
-    (E.editor Edit1 Nothing "")
-    (E.editor Edit2 (Just 2) "")
+    (F.focusRing [Edit, History])
+    (List.list History mempty 1)
+    emptyEditor
+
+emptyEditor :: E.Editor Text Name
+emptyEditor = E.editorText Edit Nothing ""
 
 theMap :: A.AttrMap
 theMap =

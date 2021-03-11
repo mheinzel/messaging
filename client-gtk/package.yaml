@@ -1,0 +1,54 @@
+name:                messaging-client-gtk
+version:             0.1.0.0
+github:              "mheinzel/messaging"
+license:             BSD3
+author:              "Luciano Platjouw, Matthias Heinzel, Nathan Oerlemans, Bart Remmers"
+maintainer:          "mheinzel@posteo.de"
+copyright:           "2021 Luciano Platjouw, Matthias Heinzel, Nathan Oerlemans, Bart Remmers"
+
+extra-source-files:
+- README.md
+
+synopsis:            Messaging GTK client
+category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/mheinzel/messaging#readme>
+
+dependencies:
+- async
+- base >= 4.7 && < 5
+- gi-gdk
+- gi-glib
+- gi-gobject
+- gi-gtk
+- gi-gtk-declarative
+- haskell-gi
+- haskell-gi-base
+- haskell-gi-overloading
+- messaging-shared
+- mtl
+- network
+- text
+- uuid
+- websockets
+
+ghc-options:
+- -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wpartial-fields -Wredundant-constraints
+
+library:
+  source-dirs: src
+
+executables:
+  messaging-client-gtk-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - base
+    - messaging-client-gtk

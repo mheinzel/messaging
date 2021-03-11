@@ -30,6 +30,7 @@ resolver:
 #   - auto-update
 #   - wai
 packages:
+- client-core
 - client-gtk
 - client-terminal
 - server

@@ -28,11 +28,11 @@ dependencies:
 - haskell-gi
 - haskell-gi-base
 - haskell-gi-overloading
+- messaging-client-core
 - messaging-shared
 - mtl
 - network
 - text
-- uuid
 - websockets
 
 ghc-options:

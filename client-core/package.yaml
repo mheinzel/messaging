@@ -1,4 +1,4 @@
-name:                messaging-client-terminal
+name:                messaging-client-core
 version:             0.1.0.0
 github:              "mheinzel/messaging"
 license:             BSD3
@@ -9,7 +9,7 @@ copyright:           "2021 Luciano Platjouw, Matthias Heinzel, Nathan Oerlemans,
 extra-source-files:
 - README.md
 
-synopsis:            Messaging terminal client
+synopsis:            Messaging client core functionality
 category:            Web
 
 # To avoid duplicated efforts in documentation and dealing with the
@@ -19,17 +19,9 @@ description:         Please see the README on GitHub at <https://github.com/mhei
 
 dependencies:
 - base >= 4.7 && < 5
-- brick
-- messaging-client-core
 - messaging-shared
-- microlens
-- microlens-th
-- mtl
 - network
 - text
-- uuid
-- vector
-- vty
 - websockets
 
 ghc-options:
@@ -37,15 +29,3 @@ ghc-options:
 
 library:
   source-dirs: src
-
-executables:
-  messaging-client-terminal-exe:
-    main:                Main.hs
-    source-dirs:         app
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    dependencies:
-    - base
-    - messaging-client-terminal

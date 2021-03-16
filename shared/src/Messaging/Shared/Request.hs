@@ -15,9 +15,13 @@ import qualified Data.Aeson as Aeson
 import Data.Bifunctor (first)
 import Data.ByteString.Lazy (ByteString)
 import GHC.Generics (Generic)
+import Messaging.Shared.Conversation (ConversationName)
 import Messaging.Shared.Message (Message)
 
-data Request = SendMessage Message
+data Request
+  = SendMessage Message
+  | JoinConversation ConversationName
+  | LeaveConversation ConversationName
   deriving stock (Show, Generic)
   deriving anyclass (Aeson.ToJSON, Aeson.FromJSON)
 

@@ -71,8 +71,8 @@ cleanUpConnection state user _conn = runApp state $ do
 handleConnection :: State -> User -> WS.Connection -> IO ()
 handleConnection state user conn = runApp state $ do
   -- For now just pretend there's only one conversation.
-  let convName = conversationNameGeneral
-  Conv.addToConversation user convName
+  let defaultConvName = conversationNameGeneral
+  Conv.addToConversation user defaultConvName
 
   forever $ do
     received <- liftIO $ WS.receiveData conn
@@ -81,3 +81,7 @@ handleConnection state user conn = runApp state $ do
         liftIO $ putStrLn (Req.errorMessage err)
       Right (Req.SendMessage msg) ->
         Conv.broadcastMessage user msg
+      Right (Req.JoinConversation convName) ->
+        Conv.addToConversation user convName
+      Right (Req.LeaveConversation convName) ->
+        Conv.removeFromConversation user convName

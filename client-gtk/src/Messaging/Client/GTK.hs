@@ -3,20 +3,22 @@
 
 module Messaging.Client.GTK where
 
-import Control.Monad (void)
+import Control.Concurrent (Chan, forkIO)
+import qualified Control.Concurrent as Ch
+import Control.Monad (forever, void)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text (encodeUtf8)
-import GI.Gtk.Declarative
 import GI.Gtk.Declarative.App.Simple
 import qualified Messaging.Client.Core.Connection as Conn
 import qualified Messaging.Client.GTK.UI as UI
+import qualified Messaging.Shared.Request as Req
+import qualified Messaging.Shared.Response as Res
 import Messaging.Shared.User (mkUserName, userNameText)
 import Network.Socket (withSocketsDo)
 import qualified Network.WebSockets as WS
 import qualified System.Environment as Env
 import qualified System.Exit as Exit
-import Control.Concurrent (newChan)
 
 runClient :: IO ()
 runClient = do
@@ -39,25 +41,30 @@ client :: WS.ClientApp ()
 client conn = do
   putStrLn "Connected!"
 
-  _incoming <- Conn.spawnRecvThread conn
-  _outgoing <- Conn.spawnSendThread conn
+  incoming <- Conn.spawnRecvThread conn
+  outgoing <- Conn.spawnSendThread conn
 
-  -- TODO: run UI
-  runUI
-
+  runUI incoming outgoing
   -- We might want to also explicitly leave our conversations here.
   WS.sendClose conn ("Bye!" :: Text)
 
-
 -- as is, takes input and crashes when m is pressed
-runUI :: IO ()
-runUI = do
-  input <- newChan
+runUI :: Chan Res.Response -> Chan Req.Request -> IO ()
+runUI incoming outgoing = do
+  incomingEvents <- mapChan UI.Inbound incoming
+
   void $
     run
       App
         { view = UI.view,
-          update = UI.update,
-          inputs = input,
+          update = UI.update outgoing,
+          inputs = incomingEvents,
           initialState = UI.initialState
         }
+
+-- Verify if this is desirable
+mapChan :: (a -> b) -> Chan a -> IO (Chan b)
+mapChan f a = do
+  b <- Ch.newChan
+  _ <- forkIO $ forever $ Ch.readChan a >>= Ch.writeChan b . f
+  return b

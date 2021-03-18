@@ -1,4 +1,4 @@
-name:                messaging-client-terminal
+name:                ansi-terminal-declarative-simple
 version:             0.1.0.0
 github:              "mheinzel/messaging"
 license:             BSD3
@@ -9,8 +9,8 @@ copyright:           "2021 Luciano Platjouw, Matthias Heinzel, Nathan Oerlemans,
 extra-source-files:
 - README.md
 
-synopsis:            Messaging terminal client, ANSI terminal based
-category:            Web
+synopsis:            ANSI-terminal-compatible declarative UI library with very limited feature set
+category:            Terminal
 
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
@@ -19,32 +19,16 @@ description:         Please see the README on GitHub at <https://github.com/mhei
 
 dependencies:
 - ansi-terminal
-- ansi-terminal-declarative-simple
 - base >= 4.7 && < 5
 - containers
-- messaging-client-core
-- messaging-shared
-- microlens
-- microlens-th
-- network
+- mtl
+- terminal-size
 - text
+- transformers
 - vector
-- websockets
 
 ghc-options:
 - -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wpartial-fields -Wredundant-constraints
 
 library:
   source-dirs: src
-
-executables:
-  messaging-client-terminal-exe:
-    main:                Main.hs
-    source-dirs:         app
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    dependencies:
-    - base
-    - messaging-client-terminal

@@ -35,3 +35,4 @@ recvThread conn putResponse = forever $ do
     printError :: Res.DeserializeError -> IO ()
     printError err =
       putStrLn $ "failed to deserialize message: " <> Res.errorMessage err
+

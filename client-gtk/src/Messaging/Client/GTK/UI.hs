@@ -1,9 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
 
 module Messaging.Client.GTK.UI where
 
@@ -32,7 +30,7 @@ import GI.Gtk.Declarative
 import GI.Gtk.Declarative.App.Simple
 import GI.Gtk.Declarative.Container.Class (Children)
 import Lens.Micro
-import Lens.Micro.TH
+import Messaging.Client.Core.State
 import qualified Messaging.Shared.Conversation as Conv
 import qualified Messaging.Shared.Message as Msg
 import qualified Messaging.Shared.Request as Req
@@ -46,17 +44,9 @@ data Event
     Closed
   | Ignore
 
-data State = State
-  { _history :: Vector Res.Response,
-    --    _historySticky :: Bool,
-    _editor :: Text
-  }
-
-makeLenses ''State
-
 update :: Chan Req.Request -> State -> Event -> Transition State Event
 update _ st (Inbound res) =
-  Transition (st & history %~ \l -> l <> [res]) (pure Nothing)
+  Transition (st & handleServerResponse res) (pure Nothing)
 --update _ st (Stick b) =
 --  Transition (st & historySticky .~ b) (pure Nothing)
 update out st (Outbound req) =
@@ -83,17 +73,17 @@ view st =
 viewHistory :: FromWidget (Container ListBox (Children (Bin ListBoxRow))) target => State -> target event
 viewHistory st =
   container ListBox [#valign := AlignEnd] $
-    (st ^. history) <&> \req ->
+    (st ^. currentHistory) <&> \req ->
       bin ListBoxRow [#activatable := False, #selectable := False] $
         widget Label [#label := renderRequest req]
 
-renderRequest :: Res.Response -> Text
-renderRequest (Res.ReceivedMessage user msg) =
-  User.userNameText (User.userName user) <> ": " <> Msg.messageContent msg
-renderRequest (Res.JoinedConversation user _conv) =
-  User.userNameText (User.userName user) <> " JOINED"
-renderRequest (Res.LeftConversation user _conv) =
-  User.userNameText (User.userName user) <> " LEFT"
+renderRequest :: ConversationHistoryEntry -> Text
+renderRequest (Message user msg) =
+  User.userNameText user <> ": " <> msg
+renderRequest (UserJoined user) =
+  User.userNameText user <> " JOINED"
+renderRequest (UserLeft user) =
+  User.userNameText user <> " LEFT"
 
 --scrollEvent :: ScrollType -> Bool -> (Bool, Event)
 --scrollEvent ScrollTypeEnd True = trace "stick" (True, Stick True)
@@ -112,4 +102,4 @@ windowKeyPressEventHandler eventKey entry = do
     _ -> return (False, Ignore)
 
 initialState :: State
-initialState = State [] mempty
+initialState = emptyState

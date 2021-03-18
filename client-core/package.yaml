@@ -23,6 +23,10 @@ dependencies:
 - network
 - text
 - websockets
+- containers
+- microlens
+- microlens-th
+- vector
 
 ghc-options:
 - -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wpartial-fields -Wredundant-constraints

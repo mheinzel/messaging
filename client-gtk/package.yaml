@@ -32,10 +32,10 @@ dependencies:
   - messaging-shared
   - mtl
   - network
-  - text
-  - websockets
   - microlens
   - microlens-th
+  - text
+  - websockets
   - vector
 
 

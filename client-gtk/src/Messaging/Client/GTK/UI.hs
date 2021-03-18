@@ -17,19 +17,23 @@ import GI.Gtk
   ( Align (..),
     Box (..),
     Entry (..),
+    EventControllerScroll (..),
     Label (..),
     ListBox (..),
     ListBoxRow (..),
     Orientation (..),
     ScrollType (..),
     ScrolledWindow (..),
-    Window (..), EventControllerScroll (..),
+    Window (..),
+    entryGetText,
+    entrySetText,
   )
 import GI.Gtk.Declarative
 import GI.Gtk.Declarative.App.Simple
 import GI.Gtk.Declarative.Container.Class (Children)
 import Lens.Micro
 import Lens.Micro.TH
+import qualified Messaging.Shared.Conversation as Conv
 import qualified Messaging.Shared.Message as Msg
 import qualified Messaging.Shared.Request as Req
 import qualified Messaging.Shared.Response as Res
@@ -38,44 +42,41 @@ import qualified Messaging.Shared.User as User
 data Event
   = Inbound Res.Response
   | Outbound Req.Request
-  | Stick Bool
-  | Closed
+  | --  | Stick Bool
+    Closed
+  | Ignore
 
 data State = State
   { _history :: Vector Res.Response,
-    _historySticky :: Bool,
+    --    _historySticky :: Bool,
     _editor :: Text
   }
 
 makeLenses ''State
 
--- | The update function of an application reduces the current state and
--- a new event to a 'Transition', which decides if and how to transition
--- to the next state.
 update :: Chan Req.Request -> State -> Event -> Transition State Event
 update _ st (Inbound res) =
   Transition (st & history %~ \l -> l <> [res]) (pure Nothing)
-update _ st (Stick b) =
-  Transition (st & historySticky .~ b) (pure Nothing)
+--update _ st (Stick b) =
+--  Transition (st & historySticky .~ b) (pure Nothing)
 update out st (Outbound req) =
   Transition st $ writeChan out req $> Nothing
+update _ st Ignore = Transition st (pure Nothing)
 update _ _ Closed = Exit
 
--- | The view renders a state value as a window, parameterized by the
--- 'App's event type.
 view :: State -> AppView Window Event
 view st =
   bin
     Window
     [ #title := "Title",
       #widthRequest := 800,
-      #heightRequest := 200,
+      #heightRequest := 600,
       on #deleteEvent (const (True, Closed))
     ]
     $ container
       Box
       [#orientation := OrientationVertical, #valign := AlignEnd]
-      [ bin ScrolledWindow [#propagateNaturalHeight := True, on #scrollChild scrollEvent] $ viewHistory st,
+      [ bin ScrolledWindow [#propagateNaturalHeight := True] $ viewHistory st,
         widget Entry [onM #keyPressEvent windowKeyPressEventHandler]
       ]
 
@@ -94,18 +95,21 @@ renderRequest (Res.JoinedConversation user _conv) =
 renderRequest (Res.LeftConversation user _conv) =
   User.userNameText (User.userName user) <> " LEFT"
 
-scrollEvent :: ScrollType -> Bool -> (Bool, Event)
-scrollEvent ScrollTypeEnd True = trace "stick" (True, Stick True)
-scrollEvent _ _ = trace "DoNt stick" (True, Stick False)
+--scrollEvent :: ScrollType -> Bool -> (Bool, Event)
+--scrollEvent ScrollTypeEnd True = trace "stick" (True, Stick True)
+--scrollEvent _ _ = trace "DoNt stick" (True, Stick False)
 
 windowKeyPressEventHandler :: EventKey -> Entry -> IO (Bool, Event)
-windowKeyPressEventHandler eventKey _ = do
+windowKeyPressEventHandler eventKey entry = do
   key <- getEventKeyString eventKey
   case key of
-    Just "m" -> return (True, Closed)
-    Just k -> trace ("Pressed: " ++ show k) $ return (False, Closed)
-    _ -> return (False, Closed)
+    Just "\ESC" -> return (True, Closed)
+    Just "\r" -> do
+      msg <- Msg.Message Conv.conversationNameGeneral <$> entryGetText entry
+      entrySetText entry ""
+      return (True, Outbound $ Req.SendMessage msg)
+    Just k -> trace ("Pressed: " ++ show k) $ return (False, Ignore)
+    _ -> return (False, Ignore)
 
--- | The initial state value of the state reduction loop.
 initialState :: State
-initialState = State [] True mempty
+initialState = State [] mempty

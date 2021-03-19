@@ -20,7 +20,7 @@ viewState state =
 viewInputState :: InputState -> Ansi.View
 viewInputState state =
   Ansi.BarAtTop '-' $
-    Ansi.Block $ pure $ styleInput $ _inputStateText state
+    Ansi.Block $ pure $ renderInput $ _inputStateText state
 
 viewCoreState :: Core.State -> Ansi.View
 viewCoreState state =
@@ -28,42 +28,28 @@ viewCoreState state =
 
 viewHistory :: Core.ConversationHistory -> Ansi.View
 viewHistory history =
-  Ansi.Block $ styleLine <$> Core._historyEntries history
+  Ansi.Block $ renderHistoryEntry <$> Core._historyEntries history
 
 -------------------------------------------------------------------------------
 
-styleLine :: Core.ConversationHistoryEntry -> Ansi.StyledLine
-styleLine (Core.Message sender msg) =
-  styleSender (User.userNameText sender)
-    <> styleMessage (": " <> msg)
-styleLine (Core.UserJoined user) =
-  styleSystemMessage (User.userNameText user <> " JOINED")
-styleLine (Core.UserLeft user) =
-  styleSystemMessage (User.userNameText user <> " LEFT")
+renderHistoryEntry :: Core.ConversationHistoryEntry -> Ansi.StyledLine
+renderHistoryEntry (Core.Message sender msg) =
+  renderUserName sender <> renderMessageBody (": " <> msg)
+renderHistoryEntry (Core.UserJoined user) =
+  renderSystemMessage (User.userNameText user <> " JOINED")
+renderHistoryEntry (Core.UserLeft user) =
+  renderSystemMessage (User.userNameText user <> " LEFT")
 
-styleSystemMessage :: Text -> Ansi.StyledLine
-styleSystemMessage =
-  Ansi.StyledLine
-    . pure
-    . Ansi.StyledSegment
-      [Ansi.SetColor Ansi.Foreground Ansi.Dull Ansi.Cyan]
+renderSystemMessage :: Text -> Ansi.StyledLine
+renderSystemMessage =
+  Ansi.styled [Ansi.SetColor Ansi.Foreground Ansi.Dull Ansi.Cyan]
 
-styleSender :: Text -> Ansi.StyledLine
-styleSender =
-  Ansi.StyledLine
-    . pure
-    . Ansi.StyledSegment
-      [Ansi.SetColor Ansi.Foreground Ansi.Dull Ansi.Red]
+renderUserName :: User.UserName -> Ansi.StyledLine
+renderUserName =
+  Ansi.styled [Ansi.SetColor Ansi.Foreground Ansi.Dull Ansi.Red] . User.userNameText
 
-styleMessage :: Text -> Ansi.StyledLine
-styleMessage =
-  Ansi.StyledLine
-    . pure
-    . Ansi.StyledSegment
-      [Ansi.SetColor Ansi.Foreground Ansi.Dull Ansi.Black]
+renderMessageBody :: Text -> Ansi.StyledLine
+renderMessageBody = Ansi.unstyled
 
-styleInput :: Text -> Ansi.StyledLine
-styleInput = styleMessage
-
-styleSeparator :: Text -> Ansi.StyledLine
-styleSeparator = styleMessage
+renderInput :: Text -> Ansi.StyledLine
+renderInput = Ansi.unstyled

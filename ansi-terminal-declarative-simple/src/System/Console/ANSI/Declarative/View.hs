@@ -4,7 +4,15 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module System.Console.ANSI.Declarative.View where
+module System.Console.ANSI.Declarative.View
+  ( render
+  , View (..)
+  , SplitDir (..)
+  , SplitPos (..)
+  , StyledLine
+  , unstyled
+  , styled
+  ) where
 
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader.Class (MonadReader, ask, local)
@@ -120,6 +128,12 @@ newtype StyledLine = StyledLine {styledSegments :: [StyledSegment]}
   deriving stock (Show)
   deriving newtype (Semigroup, Monoid)
 
+unstyled :: Text -> StyledLine
+unstyled = styled []
+
+styled :: [Ansi.SGR] -> Text -> StyledLine
+styled style = StyledLine . pure . StyledSegment style
+
 data StyledSegment = StyledSegment
   { segmentStyle :: [Ansi.SGR],
     segmentText :: Text
@@ -150,9 +164,6 @@ renderLine line = do
     renderSegment (StyledSegment style text) = do
       Ansi.setSGR style
       Text.putStr text
-
-styledLineLength :: StyledLine -> Int
-styledLineLength = sum . map (Text.length . segmentText) . styledSegments
 
 wrapStyledLine :: Int -> StyledLine -> [StyledLine]
 wrapStyledLine width = unfoldr $ \case

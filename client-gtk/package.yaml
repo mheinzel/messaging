@@ -21,22 +21,18 @@ dependencies:
   - async
   - base >= 4.7 && < 5
   - gi-gdk
-  - gi-glib
-  - gi-gobject
   - gi-gtk
   - gi-gtk-declarative
-  - haskell-gi
-  - haskell-gi-base
-  - haskell-gi-overloading
+  - gi-gtk-declarative-app-simple
   - messaging-client-core
   - messaging-shared
   - microlens
   - microlens-th
   - network
+  - pipes
   - text
   - vector
   - websockets
-
 
 ghc-options:
   - -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wpartial-fields -Wredundant-constraints

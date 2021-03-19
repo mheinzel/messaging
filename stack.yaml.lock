@@ -11,6 +11,13 @@ packages:
       sha256: eba1ca9b183eabe6f6b3ab2be9250428c97d2982d303f7abc0a431e5eaada73f
   original:
     hackage: gi-gtk-declarative-0.7.0
+- completed:
+    hackage: gi-gtk-declarative-app-simple-0.7.0@sha256:bc14f7cee5b933ce448f7ff5af13bd2cf63c657426003a8b41457556997ac39f,2276
+    pantry-tree:
+      size: 310
+      sha256: 06ceda071cbb81f20e41a3ac1d7291d63b040aacce428817c31a6aea8ca94c2d
+  original:
+    hackage: gi-gtk-declarative-app-simple-0.7.0
 snapshots:
 - completed:
     size: 563103

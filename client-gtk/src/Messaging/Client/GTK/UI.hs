@@ -1,8 +1,8 @@
 module Messaging.Client.GTK.UI where
 
-import Control.Concurrent (forkIO)
-import Control.Concurrent.Chan (Chan, newChan, readChan, writeChan)
+import Control.Concurrent.Chan (Chan, readChan, writeChan)
 import Control.Monad (forever)
+import Control.Monad.IO.Class (liftIO)
 import Data.Functor (void, ($>))
 import GI.Gtk (Window)
 import GI.Gtk.Declarative.App.Simple (App (..), Transition (Exit, Transition), run)
@@ -12,25 +12,24 @@ import Messaging.Client.GTK.View (Event (..))
 import qualified Messaging.Client.GTK.View as View
 import qualified Messaging.Shared.Request as Req
 import qualified Messaging.Shared.Response as Res
+import qualified Pipes
 
 runUI :: Chan Res.Response -> Chan Req.Request -> IO ()
 runUI incomingChan outgoingChan = do
-  eventChan <- mapChan Inbound incomingChan
-  void $ run $ app eventChan outgoingChan
+  let eventProducer = produceFromChan Inbound incomingChan
+  void $ run $ app eventProducer outgoingChan
 
--- Verify if this is desirable
-mapChan :: (a -> b) -> Chan a -> IO (Chan b)
-mapChan f a = do
-  b <- newChan
-  _ <- forkIO $ forever $ readChan a >>= writeChan b . f
-  return b
+produceFromChan :: (a -> b) -> Chan a -> Pipes.Producer b IO ()
+produceFromChan f chan = forever $ do
+  x <- liftIO $ readChan chan
+  Pipes.yield $ f x
 
-app :: Chan Event -> Chan Req.Request -> App Window Core.State Event
-app eventChan outgoingChan =
+app :: Pipes.Producer Event IO () -> Chan Req.Request -> App Window Core.State Event
+app eventProducer outgoingChan =
   App
     { view = View.view,
       update = updateState outgoingChan,
-      inputs = eventChan,
+      inputs = [eventProducer],
       initialState = Core.emptyState
     }
 

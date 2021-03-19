@@ -2,14 +2,13 @@
 
 module Messaging.Client.Core.State where
 
-import Data.Set (Set)
 import Data.Text (Text)
 import Data.Vector (Vector, empty, singleton)
-import Lens.Micro
-import Lens.Micro.TH
-import Messaging.Shared.Message (messageContent)
+import Lens.Micro (Lens', (&), (<>~))
+import Lens.Micro.TH (makeLenses)
+import qualified Messaging.Shared.Conversation as Conv
+import qualified Messaging.Shared.Message as Msg
 import qualified Messaging.Shared.Response as Res
-import Messaging.Shared.User (userName)
 import qualified Messaging.Shared.User as User
 
 newtype State = State
@@ -18,9 +17,10 @@ newtype State = State
   }
   deriving (Show)
 
-newtype ConversationState = ConversationState
-  { --  _conversationMembers :: Set User.UserName,
+data ConversationState = ConversationState
+  { _conversationName :: Conv.ConversationName,
     _conversationHistory :: ConversationHistory
+    -- _conversationMembers :: Set User.UserName
   }
   deriving (Show)
 
@@ -43,12 +43,13 @@ currentHistory :: Lens' State (Vector ConversationHistoryEntry)
 currentHistory = currentConversation . conversationHistory . historyEntries
 
 emptyState :: State
-emptyState = State $ ConversationState $ ConversationHistory empty
+emptyState =
+  State $ ConversationState Conv.conversationNameGeneral $ ConversationHistory empty
 
 handleServerResponse :: Res.Response -> State -> State
 handleServerResponse (Res.ReceivedMessage user msg) st =
-  st & currentHistory <>~ singleton (Message (userName user) (messageContent msg))
+  st & currentHistory <>~ singleton (Message (User.userName user) (Msg.messageContent msg))
 handleServerResponse (Res.JoinedConversation user _) st =
-  st & currentHistory <>~ singleton (UserJoined $ userName user)
+  st & currentHistory <>~ singleton (UserJoined $ User.userName user)
 handleServerResponse (Res.LeftConversation user _) st =
-  st & currentHistory <>~ singleton (UserLeft $ userName user)
+  st & currentHistory <>~ singleton (UserLeft $ User.userName user)

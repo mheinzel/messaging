@@ -24,6 +24,7 @@ dependencies:
 - mtl
 - terminal-size
 - text
+- text-zipper
 - transformers
 - vector
 

@@ -5,33 +5,33 @@
 module Messaging.Client.Terminal.State where
 
 import Data.Text (Text)
-import qualified Data.Text as Text
+import Lens.Micro (over, set)
 import Lens.Micro.TH (makeLenses)
 import qualified Messaging.Client.Core.State as Core
 import qualified Messaging.Shared.Conversation as Conv
-import System.Console.ANSI.Declarative.Input (KeyboardInput (..))
+import qualified System.Console.ANSI.Declarative.Editor as Ansi
+import qualified System.Console.ANSI.Declarative.Input as Ansi
 
 data State = State
-  { _inputState :: InputState,
-    _coreState :: Core.State
+  { _coreState :: Core.State,
+    _editor :: Ansi.Editor
   }
   deriving (Show)
 
--- TODO: Define some proper Editor widget in ansi-terminal-declarative-simple!
-newtype InputState = InputState {_inputStateText :: Text}
-  deriving (Show)
-
 makeLenses ''State
-makeLenses ''InputState
 
 currentConversationName :: State -> Conv.ConversationName
 currentConversationName =
   Core._conversationName . Core._currentConversation . _coreState
 
-handleKeyboardInput :: KeyboardInput -> InputState -> InputState
-handleKeyboardInput input (InputState txt) = case input of
-  Printable c -> InputState $ Text.snoc txt c
-  Enter -> InputState mempty
+handleEditorInput :: Ansi.KeyboardInput -> State -> State
+handleEditorInput input = over editor (Ansi.handleInput input)
+
+resetEditor :: State -> State
+resetEditor = set editor (Ansi.editor "")
+
+editorContent :: State -> Text
+editorContent = Ansi.editorContent . _editor
 
 initialState :: State
-initialState = State (InputState mempty) Core.emptyState
+initialState = State Core.emptyState (Ansi.editor "")

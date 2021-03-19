@@ -46,23 +46,24 @@ handleEvent :: Chan Req.Request -> State -> Event -> Ansi.Simple.Transition Stat
 handleEvent outgoingChan state = \case
   ServerResponse res -> Ansi.Simple.Transition $ do
     pure $ state & over coreState (Core.handleServerResponse res)
+  Input Ansi.Input.Escape -> Ansi.Simple.Exit
   Input Ansi.Input.Enter ->
-    case typedCommand (_inputState state) of
+    case typedCommand state of
       Just CmdQuit -> Ansi.Simple.Exit
       Just (CmdSend txt) -> Ansi.Simple.Transition $ do
         let convName = currentConversationName state
         let msg = Msg.Message convName txt
         writeChan outgoingChan (Req.SendMessage msg)
-        pure $ state & over inputState (handleKeyboardInput Ansi.Input.Enter)
+        pure $ resetEditor state
       Nothing -> Ansi.Simple.Transition $ do
-        pure $ state & over inputState (handleKeyboardInput Ansi.Input.Enter)
+        pure $ resetEditor state
   Input kb -> Ansi.Simple.Transition $ do
-    pure $ state & over inputState (handleKeyboardInput kb)
+    pure $ handleEditorInput kb state
 
 data Command = CmdQuit | CmdSend Text
 
-typedCommand :: InputState -> Maybe Command
-typedCommand = command . Text.strip . _inputStateText
+typedCommand :: State -> Maybe Command
+typedCommand = command . Text.strip . editorContent
   where
     command txt
       | Text.null txt = Nothing

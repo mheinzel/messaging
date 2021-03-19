@@ -8,29 +8,28 @@ module Messaging.Client.GTK.UI where
 import Control.Concurrent.Chan (Chan, writeChan)
 import Data.Functor (($>))
 import Data.Text (Text)
-import Data.Vector (Vector)
 import Debug.Trace (trace)
 import GI.Gdk (EventKey, getEventKeyString)
 import GI.Gtk
   ( Align (..),
     Box (..),
     Entry (..),
-    EventControllerScroll (..),
+    -- EventControllerScroll (..),
     Label (..),
     ListBox (..),
     ListBoxRow (..),
     Orientation (..),
-    ScrollType (..),
+    -- ScrollType (..),
     ScrolledWindow (..),
     Window (..),
     entryGetText,
     entrySetText,
   )
 import GI.Gtk.Declarative
-import GI.Gtk.Declarative.App.Simple
+import GI.Gtk.Declarative.App.Simple (Transition (..), AppView)
 import GI.Gtk.Declarative.Container.Class (Children)
-import Lens.Micro
-import Messaging.Client.Core.State
+import Lens.Micro ((&), (<&>), (^.))
+import Messaging.Client.Core.State as Core
 import qualified Messaging.Shared.Conversation as Conv
 import qualified Messaging.Shared.Message as Msg
 import qualified Messaging.Shared.Request as Req

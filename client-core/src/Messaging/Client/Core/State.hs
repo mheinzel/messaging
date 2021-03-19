@@ -3,8 +3,9 @@
 module Messaging.Client.Core.State where
 
 import Data.Text (Text)
-import Data.Vector (Vector, empty, singleton)
-import Lens.Micro (Lens', (&), (<>~))
+import Data.Vector (Vector)
+import qualified Data.Vector as Vector
+import Lens.Micro (Lens', over)
 import Lens.Micro.TH (makeLenses)
 import qualified Messaging.Shared.Conversation as Conv
 import qualified Messaging.Shared.Message as Msg
@@ -44,12 +45,12 @@ currentHistory = currentConversation . conversationHistory . historyEntries
 
 emptyState :: State
 emptyState =
-  State $ ConversationState Conv.conversationNameGeneral $ ConversationHistory empty
+  State $ ConversationState Conv.conversationNameGeneral $ ConversationHistory Vector.empty
 
 handleServerResponse :: Res.Response -> State -> State
-handleServerResponse (Res.ReceivedMessage user msg) st =
-  st & currentHistory <>~ singleton (Message (User.userName user) (Msg.messageContent msg))
-handleServerResponse (Res.JoinedConversation user _) st =
-  st & currentHistory <>~ singleton (UserJoined $ User.userName user)
-handleServerResponse (Res.LeftConversation user _) st =
-  st & currentHistory <>~ singleton (UserLeft $ User.userName user)
+handleServerResponse (Res.ReceivedMessage user msg) =
+  over currentHistory (`Vector.snoc` Message (User.userName user) (Msg.messageContent msg))
+handleServerResponse (Res.JoinedConversation user _) =
+  over currentHistory (`Vector.snoc` (UserJoined $ User.userName user))
+handleServerResponse (Res.LeftConversation user _) =
+  over currentHistory (`Vector.snoc` (UserLeft $ User.userName user))

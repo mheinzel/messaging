@@ -30,13 +30,12 @@ dependencies:
   - haskell-gi-overloading
   - messaging-client-core
   - messaging-shared
-  - mtl
-  - network
   - microlens
   - microlens-th
+  - network
   - text
-  - websockets
   - vector
+  - websockets
 
 
 ghc-options:

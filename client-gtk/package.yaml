@@ -28,7 +28,6 @@ dependencies:
   - messaging-shared
   - microlens
   - microlens-th
-  - network
   - pipes
   - text
   - vector

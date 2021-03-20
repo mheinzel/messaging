@@ -3,20 +3,18 @@
 
 module Messaging.Client.GTK where
 
-import Data.Text (Text)
 import qualified Data.Text as Text
-import qualified Data.Text.Encoding as Text (encodeUtf8)
 import qualified Messaging.Client.Core.Connection as Conn
 import qualified Messaging.Client.GTK.UI as UI
-import Messaging.Shared.User (mkUserName, userNameText)
-import Network.Socket (withSocketsDo)
+import Messaging.Shared.User (mkUserName)
 import qualified Network.WebSockets as WS
 import qualified System.Environment as Env
 import qualified System.Exit as Exit
 
 runClient :: IO ()
 runClient = do
-  -- TODO: proper command line argument parser, also read URL and port
+  -- TODO: proper command line argument parser, also read URI.
+  -- Or even allow entering this information in some GUI widget.
   userName <- do
     progName <- Env.getProgName
     Env.getArgs >>= \case
@@ -25,19 +23,11 @@ runClient = do
         Nothing -> Exit.die "error: invalid user name"
       _ -> Exit.die $ "usage: " <> progName <> " USERNAME"
 
-  let options = WS.defaultConnectionOptions
-  let headers = [("UserName", Text.encodeUtf8 (userNameText userName))]
+  let uri = Conn.defaultURI
 
-  withSocketsDo $
-    WS.runClientWith "127.0.0.1" 8080 "/" options headers client
+  Conn.runClientApp uri userName client
 
 client :: WS.ClientApp ()
 client conn = do
   putStrLn "Connected!"
-
-  incoming <- Conn.spawnRecvThread conn
-  outgoing <- Conn.spawnSendThread conn
-
-  UI.runUI incoming outgoing
-  -- We might want to also explicitly leave our conversations here.
-  WS.sendClose conn ("Bye!" :: Text)
+  Conn.withConnectionThreads conn UI.runUI

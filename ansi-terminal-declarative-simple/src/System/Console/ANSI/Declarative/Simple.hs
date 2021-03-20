@@ -69,6 +69,8 @@ withTerminalState = bracket setup cleanup . const
       IO.hSetBuffering IO.stdin buffIn
       IO.hSetBuffering IO.stdout buffOut
 
+-- IDEA: If we used the async package here, we coul check whether any of the
+-- spawned threads terminated and re-raise the exception in the main thread.
 withEventThreads :: App state event -> (Chan event -> IO a) -> IO a
 withEventThreads app action = bracket setup cleanup (action . fst)
   where

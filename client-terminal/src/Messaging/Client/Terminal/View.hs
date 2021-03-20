@@ -1,3 +1,4 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Messaging.Client.Terminal.View where
@@ -26,20 +27,27 @@ viewState state =
 
 viewSideBar :: Core.State -> Ansi.View
 viewSideBar state =
-  Ansi.Split Ansi.Horizontal (Ansi.FromStart 1)
-    |> Ansi.Block (pure $ Ansi.unstyled "Conversations")
-    |> viewConversationList (pure . Core._conversationName $ Core._currentConversation state)
+  Ansi.Split Ansi.Horizontal (Ansi.FromStart 2)
+    |> do
+      Ansi.Split Ansi.Horizontal (Ansi.FromEnd 1)
+        |> Ansi.Empty
+        |> do
+          Ansi.Block Ansi.AlignTop Ansi.AlignCenter $
+            pure $ Ansi.unstyled "Conversations"
+    |> do
+      viewConversationList $
+        pure . Core._conversationName $ Core._currentConversation state
 
 viewConversationList :: Vector Conv.ConversationName -> Ansi.View
 viewConversationList convs =
-  Ansi.Block . fold $
+  Ansi.Block Ansi.AlignTop Ansi.AlignLeft . fold $
     [ renderConversationName <$> convs,
       pure $ Ansi.unstyled "(just a mockup)"
     ]
 
 viewMainWindow :: State -> Ansi.View
 viewMainWindow state =
-  Ansi.Split Ansi.Horizontal (Ansi.FromEnd 1)
+  Ansi.Split Ansi.Horizontal (Ansi.FromEnd 3)
     |> viewConversation (Core._currentConversation $ _coreState state)
     |> Ansi.viewEditor (_editor state)
 
@@ -49,7 +57,8 @@ viewConversation conv =
 
 viewHistory :: Core.ConversationHistory -> Ansi.View
 viewHistory history =
-  Ansi.Block $ renderHistoryEntry <$> Core._historyEntries history
+  Ansi.Block Ansi.AlignBottom Ansi.AlignLeft $
+    renderHistoryEntry <$> Core._historyEntries history
 
 -------------------------------------------------------------------------------
 

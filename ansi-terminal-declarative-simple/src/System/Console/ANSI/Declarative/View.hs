@@ -1,11 +1,14 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module System.Console.ANSI.Declarative.View
   ( render,
     View (..),
+    AlignHorizontal (..),
+    AlignVertical (..),
     SplitDir (..),
     SplitPos (..),
     StyledLine,
@@ -30,8 +33,26 @@ import qualified System.Console.Terminal.Size as Term
 
 data View
   = Empty
-  | Block (Vector StyledLine)
+  | Block AlignHorizontal AlignVertical (Vector StyledLine)
   | Split SplitDir SplitPos View View
+  deriving (Show)
+
+data Align = Align
+  { alignHorizontal :: AlignHorizontal,
+    alignVertical :: AlignVertical
+  }
+  deriving (Show)
+
+data AlignHorizontal
+  = AlignTop
+  | AlignBottom
+  | AlignMiddle
+  deriving (Show)
+
+data AlignVertical
+  = AlignLeft
+  | AlignRight
+  | AlignCenter
   deriving (Show)
 
 data SplitDir
@@ -150,8 +171,8 @@ renderView :: View -> Render Result
 renderView = \case
   Empty ->
     pure mempty
-  Block block ->
-    renderLines block
+  Block alignH alignV block ->
+    renderLines (Align alignH alignV) block
   Split Horizontal pos top bot -> do
     size <- availableSize
     height <- availableHeight
@@ -210,7 +231,7 @@ fillWith :: Char -> Render Result
 fillWith char = do
   width <- availableWidth
   height <- availableHeight
-  renderLines $
+  renderLines (Align AlignTop AlignLeft) $
     Vector.replicate height . unstyled $
       Text.replicate width $
         Text.singleton char
@@ -228,36 +249,57 @@ unstyled = styled []
 styled :: [Ansi.SGR] -> Text -> StyledLine
 styled style = StyledLine . map (StyledSegment style) . Text.lines
 
+lineLength :: StyledLine -> Int
+lineLength = sum . map segmentLength . styledSegments
+
 data StyledSegment = StyledSegment
   { segmentStyle :: [Ansi.SGR],
     segmentText :: Text
   }
   deriving stock (Show)
 
+segmentLength :: StyledSegment -> Int
+segmentLength = Text.length . segmentText
+
 -- | Wraps lines. If there is not enough vertical space available, the last
 -- lines will be shown.
-renderLines :: Vector StyledLine -> Render Result
-renderLines block = do
+renderLines :: Align -> Vector StyledLine -> Render Result
+renderLines Align {alignHorizontal, alignVertical} block = do
   height <- availableHeight
   width <- availableWidth
-  -- We know each element needs at least one line, so no we can discard some
-  -- immediately.
-  let candidates = Vector.drop (length block - height) block
-  let wrapped = foldMap (wrapStyledLine width) candidates
-  let visible = drop (length wrapped - height) wrapped
-  let paddingTop = height - length wrapped
-  zipWithM_ renderLine [paddingTop ..] visible
+  let wrapped = foldMap (wrapStyledLine width) block
+  let paddingTop = horizontalPadding alignHorizontal (length wrapped) height
+  let visible = drop (negate paddingTop) $ take height wrapped
+  zipWithM_ (renderLine alignVertical) [paddingTop ..] visible
   pure mempty
 
-renderLine :: Int -> StyledLine -> Render ()
-renderLine offset line = do
+renderLine :: AlignVertical -> Int -> StyledLine -> Render ()
+renderLine align offset line = do
   origin <- spaceOrigin <$> ask
-  liftIO $ Ansi.setCursorPosition (positionRow origin + offset) (positionColumn origin)
+  width <- availableWidth
+  let paddingLeft = verticalPadding align (lineLength line) width
+  let row = positionRow origin + offset
+  let column = positionColumn origin + paddingLeft
+  liftIO $ Ansi.setCursorPosition row column
   liftIO $ traverse_ renderSegment $ reverse $ styledSegments line
   where
     renderSegment (StyledSegment style text) = do
       Ansi.setSGR style
       Text.putStr text
+
+horizontalPadding :: AlignHorizontal -> Int -> Int -> Int
+horizontalPadding align used available =
+  case align of
+    AlignTop -> 0
+    AlignBottom -> available - used
+    AlignMiddle -> (available - used) `div` 2
+
+verticalPadding :: AlignVertical -> Int -> Int -> Int
+verticalPadding align used available =
+  case align of
+    AlignLeft -> 0
+    AlignRight -> available - used
+    AlignCenter -> (available - used) `div` 2
 
 wrapStyledLine :: Int -> StyledLine -> [StyledLine]
 wrapStyledLine width = unfoldr $ \case

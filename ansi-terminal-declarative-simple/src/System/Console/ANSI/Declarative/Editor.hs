@@ -3,6 +3,7 @@ module System.Console.ANSI.Declarative.Editor where
 import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.Zipper as Zipper
+import qualified Data.Vector as Vector
 import System.Console.ANSI.Declarative.Input
 import System.Console.ANSI.Declarative.View
 
@@ -34,4 +35,9 @@ handleInput input = Editor . edit input . getZipper
     edit (Arrow ArrowRight) = Zipper.moveRight
 
 viewEditor :: Editor -> View
-viewEditor = Block . pure . unstyled . editorContent
+viewEditor =
+  Block AlignTop AlignLeft
+    . Vector.fromList
+    . fmap unstyled
+    . Zipper.getText
+    . getZipper

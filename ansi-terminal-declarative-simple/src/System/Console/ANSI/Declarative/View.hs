@@ -21,6 +21,7 @@ module System.Console.ANSI.Declarative.View
     padRight,
     BorderCharacters (..),
     asciiChars,
+    unicodeChars,
 
     -- * Block content
     StyledLine,
@@ -142,6 +143,19 @@ asciiChars =
       borderCharCornerTopRight = '+',
       borderCharCornerBottomLeft = '+',
       borderCharCornerBottomRight = '+'
+    }
+
+unicodeChars :: BorderCharacters
+unicodeChars =
+  BorderCharacters
+    { borderCharTop = '─',
+      borderCharBottom = '─',
+      borderCharLeft = '│',
+      borderCharRight = '│',
+      borderCharCornerTopLeft = '┌',
+      borderCharCornerTopRight = '┐',
+      borderCharCornerBottomLeft = '└',
+      borderCharCornerBottomRight = '┘'
     }
 
 -------------------------------------------------------------------------------

@@ -15,7 +15,8 @@ import qualified System.Console.ANSI.Declarative.Input as Ansi
 data State = State
   { _coreState :: Core.State,
     _editor :: Ansi.Editor,
-    _sidebarExpanded :: Bool
+    _sidebarExpanded :: Bool,
+    _unicodeEnabled :: Bool
   }
   deriving (Show)
 
@@ -37,5 +38,8 @@ editorContent = Ansi.editorContent . _editor
 toggleSidebar :: State -> State
 toggleSidebar = over sidebarExpanded not
 
+toggleUnicode :: State -> State
+toggleUnicode = over unicodeEnabled not
+
 initialState :: State
-initialState = State Core.emptyState (Ansi.editor "") True
+initialState = State Core.emptyState (Ansi.editor "") True False

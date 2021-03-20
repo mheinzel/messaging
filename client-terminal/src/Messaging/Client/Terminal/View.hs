@@ -23,25 +23,30 @@ viewState :: State -> Ansi.View
 viewState state
   | _sidebarExpanded state =
     Ansi.Split Ansi.Vertical (Ansi.FromEnd 26)
-      |> viewMainWindow state
-      |> viewSideBar (_coreState state)
+      |> viewMainWindow borderChars state
+      |> viewSideBar borderChars (_coreState state)
   | otherwise =
-    viewMainWindow state
+    viewMainWindow borderChars state
+  where
+    borderChars =
+      if _unicodeEnabled state
+        then Ansi.unicodeChars
+        else Ansi.asciiChars
 
-viewSideBar :: Core.State -> Ansi.View
-viewSideBar state =
-  Ansi.Box Ansi.asciiChars $
+viewSideBar :: Ansi.BorderCharacters -> Core.State -> Ansi.View
+viewSideBar borderChars state =
+  Ansi.Border borderChars $
     Ansi.Padding (Ansi.padVertical 1) $
       Ansi.Split Ansi.Horizontal (Ansi.FromStart 4)
         |> do
-          Ansi.Box Ansi.asciiChars $
+          Ansi.Border borderChars $
             Ansi.Block Ansi.AlignTop Ansi.AlignCenter $
               Vector.fromList
                 [ renderSystemMessage "Conversations",
                   Ansi.unstyled "(just a mockup)"
                 ]
         |> do
-          Ansi.Split Ansi.Horizontal (Ansi.FromEnd 8)
+          Ansi.Split Ansi.Horizontal (Ansi.FromEnd 10)
             |> do
               Ansi.Padding (Ansi.padHorizontal 1) $
                 viewConversationList $
@@ -54,6 +59,8 @@ viewInstructions =
   Ansi.Block Ansi.AlignBottom Ansi.AlignLeft $
     Vector.fromList
       [ Ansi.unstyled "/quit",
+        Ansi.unstyled "/sidebar",
+        Ansi.unstyled "/unicode",
         Ansi.unstyled "",
         Ansi.unstyled "Enter: send message",
         Ansi.unstyled "Up/Down: select conv",
@@ -68,14 +75,14 @@ viewConversationList convs =
 
 -------------------------------------------------------------------------------
 
-viewMainWindow :: State -> Ansi.View
-viewMainWindow state =
+viewMainWindow :: Ansi.BorderCharacters -> State -> Ansi.View
+viewMainWindow borderChars state =
   Ansi.Split Ansi.Horizontal (Ansi.FromEnd 5)
     |> do
       Ansi.Padding (Ansi.padVertical 1) $
         viewConversation (Core._currentConversation $ _coreState state)
     |> do
-      Ansi.Box Ansi.asciiChars $
+      Ansi.Border borderChars $
         Ansi.viewEditor (_editor state)
 
 viewConversation :: Core.ConversationState -> Ansi.View

@@ -30,7 +30,7 @@ handleEditorInput input = over editor (Ansi.handleInput input)
 resetEditor :: State -> State
 resetEditor = set editor (Ansi.editor "")
 
-editorContent :: State -> Text
+editorContent :: State -> [Text]
 editorContent = Ansi.editorContent . _editor
 
 initialState :: State

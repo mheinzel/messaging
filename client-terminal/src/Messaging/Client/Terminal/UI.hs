@@ -54,7 +54,7 @@ handleEvent outgoingChan state = \case
 data Command = CmdQuit | CmdSend Text
 
 typedCommand :: State -> Maybe Command
-typedCommand = command . Text.strip . editorContent
+typedCommand = command . Text.strip . Text.unlines . editorContent
   where
     command txt
       | Text.null txt = Nothing

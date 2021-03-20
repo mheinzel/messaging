@@ -40,6 +40,10 @@ runApp app = do
   where
     run eventChan !state = do
       View.render (view app state)
+      -- Ideally, we would read multiple events at once here, but this requires
+      -- switching to a Chan that allows non-blocking reads.
+      -- Otherwise, we get blocked after some previous events and cannot show
+      -- them until another one arrives.
       event <- readChan eventChan
       case update app state event of
         Exit -> pure state

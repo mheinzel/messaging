@@ -13,8 +13,8 @@ newtype Editor = Editor {getZipper :: Zipper.TextZipper Text}
 editor :: Text -> Editor
 editor initial = Editor $ Zipper.textZipper (Text.lines initial) Nothing
 
-editorContent :: Editor -> Text
-editorContent = Text.unlines . Zipper.getText . getZipper
+editorContent :: Editor -> [Text]
+editorContent = Zipper.getText . getZipper
 
 handleInput :: KeyboardInput -> Editor -> Editor
 handleInput input = Editor . edit input . getZipper
@@ -39,5 +39,4 @@ viewEditor =
   Block AlignTop AlignLeft
     . Vector.fromList
     . fmap unstyled
-    . Zipper.getText
-    . getZipper
+    . editorContent

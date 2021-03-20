@@ -36,6 +36,7 @@ data View
 
 data SplitDir
   = Horizontal
+  | Vertical
   deriving (Show)
 
 data SplitPos
@@ -162,9 +163,25 @@ renderView = \case
             renderView top,
         offsetBy zero {positionRow = n} $
           clipSizeTo size {sizeRows = 1} $
-            renderBarHorizontal '-',
+            fillWith '-',
         offsetBy zero {positionRow = n + 1} $
           clipSizeTo size {sizeRows = height - n - 1} $
+            renderView bot
+      ]
+  Split Vertical pos top bot -> do
+    size <- availableSize
+    width <- availableWidth
+    let n = splitSize width pos
+    let zero = Position 0 0
+    fmap fold . sequenceA $
+      [ offsetBy zero {positionColumn = 0} $
+          clipSizeTo size {sizeColumns = n} $
+            renderView top,
+        offsetBy zero {positionColumn = n} $
+          clipSizeTo size {sizeColumns = 1} $
+            fillWith '|',
+        offsetBy zero {positionColumn = n + 1} $
+          clipSizeTo size {sizeColumns = width - n - 1} $
             renderView bot
       ]
 
@@ -189,11 +206,14 @@ clipSizeTo :: Size -> Render Result -> Render Result
 clipSizeTo size =
   local (\sp -> sp {spaceSize = minSize size (spaceSize sp)})
 
-renderBarHorizontal :: Char -> Render Result
-renderBarHorizontal char = do
+fillWith :: Char -> Render Result
+fillWith char = do
   width <- availableWidth
-  let barText = Text.replicate width (Text.singleton char)
-  renderLines . pure $ unstyled barText
+  height <- availableHeight
+  renderLines $
+    Vector.replicate height . unstyled $
+      Text.replicate width $
+        Text.singleton char
 
 -------------------------------------------------------------------------------
 

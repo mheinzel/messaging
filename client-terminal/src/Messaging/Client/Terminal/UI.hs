@@ -3,8 +3,7 @@
 
 module Messaging.Client.Terminal.UI where
 
-import Control.Concurrent (Chan, forkIO, newChan, readChan, writeChan)
-import Control.Monad (forever)
+import Control.Concurrent (Chan, readChan, writeChan)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Lens.Micro (over, (&))
@@ -19,28 +18,20 @@ import qualified System.Console.ANSI.Declarative.Simple as Ansi.Simple
 
 runUI :: Chan Res.Response -> Chan Req.Request -> IO ()
 runUI incomingChan outgoingChan = do
-  eventChan <- newChan
-  -- TODO: lots of resource cleanup to take care of here
-  _ <- forkIO $ forwardChan ServerResponse incomingChan eventChan
-  _ <- forkIO $ Ansi.Input.readInputToChan Input eventChan
-  () <$ Ansi.Simple.runApp (app eventChan outgoingChan)
+  () <$ Ansi.Simple.runApp (app incomingChan outgoingChan)
 
-app :: Chan Event -> Chan Req.Request -> Ansi.Simple.App State Event
-app eventChan outgoingChan =
+app :: Chan Res.Response -> Chan Req.Request -> Ansi.Simple.App State Event
+app incomingChan outgoingChan =
   Ansi.Simple.App
     { Ansi.Simple.update = handleEvent outgoingChan,
       Ansi.Simple.view = viewState,
-      Ansi.Simple.inputs = eventChan,
+      Ansi.Simple.useKeyboardInput = Just (Just . Input),
+      Ansi.Simple.getAdditionalEvents = [ServerResponse <$> readChan incomingChan],
       Ansi.Simple.initialState = initialState
     }
 
 data Event = ServerResponse Res.Response | Input Ansi.Input.KeyboardInput
   deriving (Show)
-
-forwardChan :: (a -> b) -> Chan a -> Chan b -> IO ()
-forwardChan f inChan outChan = forever $ do
-  x <- readChan inChan
-  writeChan outChan (f x)
 
 handleEvent :: Chan Req.Request -> State -> Event -> Ansi.Simple.Transition State
 handleEvent outgoingChan state = \case

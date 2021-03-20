@@ -8,12 +8,11 @@ import qualified Messaging.Client.Core.State as Core
 import Messaging.Client.Terminal.State
 import qualified Messaging.Shared.User as User
 import qualified System.Console.ANSI as Ansi
-import qualified System.Console.ANSI.Declarative.View as Ansi
 import qualified System.Console.ANSI.Declarative.Editor as Ansi
+import qualified System.Console.ANSI.Declarative.View as Ansi
 
 viewState :: State -> Ansi.View
 viewState state =
-  -- maybe it would be nicer to make it greedy/adaptive?
   (Ansi.Split Ansi.Horizontal (Ansi.FromEnd 2))
     (viewCoreState (_coreState state))
     (Ansi.BarAtTop '-' (Ansi.viewEditor (_editor state)))

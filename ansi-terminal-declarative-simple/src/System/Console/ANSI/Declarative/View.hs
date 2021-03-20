@@ -5,14 +5,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module System.Console.ANSI.Declarative.View
-  ( render
-  , View (..)
-  , SplitDir (..)
-  , SplitPos (..)
-  , StyledLine
-  , unstyled
-  , styled
-  ) where
+  ( render,
+    View (..),
+    SplitDir (..),
+    SplitPos (..),
+    StyledLine,
+    unstyled,
+    styled,
+  )
+where
 
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader.Class (MonadReader, ask, local)
@@ -30,7 +31,7 @@ import qualified System.Console.Terminal.Size as Term
 data View
   = Block (Vector StyledLine)
   | Split SplitDir SplitPos View View
-  | BarAtTop Char View
+  | BarAtTop Char View -- TODO: a bit too specific, generalize!
   deriving (Show)
 
 data SplitDir

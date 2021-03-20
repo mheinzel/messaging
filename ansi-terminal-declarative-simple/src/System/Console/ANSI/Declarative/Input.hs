@@ -2,8 +2,6 @@
 
 module System.Console.ANSI.Declarative.Input where
 
-import Control.Concurrent (Chan, writeChan)
-import Control.Monad (forever)
 import qualified Data.Char as Char
 import qualified System.IO as IO
 import System.Timeout (timeout)
@@ -28,12 +26,6 @@ data KeyboardArrow
   | ArrowLeft
   | ArrowRight
   deriving (Show)
-
--- | Blocks, so consider running it in the background.
-readInputToChan :: (KeyboardInput -> e) -> Chan e -> IO ()
-readInputToChan embed chan = forever $ do
-  input <- readInput
-  writeChan chan $ embed input
 
 readInput :: IO KeyboardInput
 readInput = do

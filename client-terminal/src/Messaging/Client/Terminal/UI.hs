@@ -6,7 +6,7 @@ module Messaging.Client.Terminal.UI where
 import Control.Concurrent (Chan, readChan, writeChan)
 import Data.Text (Text)
 import qualified Data.Text as Text
-import Lens.Micro (over, (&))
+import Lens.Micro (over)
 import qualified Messaging.Client.Core.State as Core
 import Messaging.Client.Terminal.State
 import Messaging.Client.Terminal.View (viewState)
@@ -35,9 +35,11 @@ data Event = ServerResponse Res.Response | Input Ansi.Input.KeyboardInput
 
 handleEvent :: Chan Req.Request -> State -> Event -> Ansi.Simple.Transition State
 handleEvent outgoingChan state = \case
-  ServerResponse res -> Ansi.Simple.Transition $ do
-    pure $ state & over coreState (Core.handleServerResponse res)
+  ServerResponse res -> Ansi.Simple.Transition $
+    pure $ over coreState (Core.handleServerResponse res) state
   Input Ansi.Input.Escape -> Ansi.Simple.Exit
+  Input Ansi.Input.Tab -> Ansi.Simple.Transition $ do
+    pure $ toggleSidebar state
   Input Ansi.Input.Enter ->
     case typedCommand state of
       Just CmdQuit -> Ansi.Simple.Exit

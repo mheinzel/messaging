@@ -14,7 +14,8 @@ import qualified System.Console.ANSI.Declarative.Input as Ansi
 
 data State = State
   { _coreState :: Core.State,
-    _editor :: Ansi.Editor
+    _editor :: Ansi.Editor,
+    _sidebarExpanded :: Bool
   }
   deriving (Show)
 
@@ -33,5 +34,8 @@ resetEditor = set editor (Ansi.editor "")
 editorContent :: State -> [Text]
 editorContent = Ansi.editorContent . _editor
 
+toggleSidebar :: State -> State
+toggleSidebar = over sidebarExpanded not
+
 initialState :: State
-initialState = State Core.emptyState (Ansi.editor "")
+initialState = State Core.emptyState (Ansi.editor "") True

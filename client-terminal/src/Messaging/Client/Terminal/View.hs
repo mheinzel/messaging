@@ -14,7 +14,7 @@ viewState :: State -> Ansi.View
 viewState state =
   (Ansi.Split Ansi.Horizontal (Ansi.FromEnd 2))
     (viewCoreState (_coreState state))
-    (Ansi.BarAtTop '-' (Ansi.viewEditor (_editor state)))
+    (Ansi.viewEditor (_editor state))
 
 viewCoreState :: Core.State -> Ansi.View
 viewCoreState state =

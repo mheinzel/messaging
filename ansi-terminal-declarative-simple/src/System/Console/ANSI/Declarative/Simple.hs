@@ -39,7 +39,6 @@ runApp app = do
       run eventChan (initialState app)
   where
     run eventChan !state = do
-      putStrLn "run"
       View.render (view app state)
       event <- readChan eventChan
       case update app state event of

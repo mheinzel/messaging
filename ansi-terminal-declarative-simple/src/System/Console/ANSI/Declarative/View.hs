@@ -14,6 +14,7 @@ module System.Console.ANSI.Declarative.View
   )
 where
 
+import Control.Monad (zipWithM_)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader.Class (MonadReader, ask, asks, local)
 import Control.Monad.Trans.Reader (ReaderT, runReaderT)
@@ -59,6 +60,11 @@ render view = do
           }
   let screenSpace = ScreenSpace (Position 0 0) size
   result <- runRender screenSpace $ renderView view
+
+  Ansi.setCursorPosition 0 0
+  -- Not exactly sure why, but without this, no output is visible.
+  putStrLn ""
+
   case resultCursors result of
     -- Just take first available cursor for now.
     cursor : _ -> do
@@ -167,7 +173,7 @@ splitSize size = clampToSize . split
   where
     clampToSize = clamp (0, size)
     split = \case
-      FromStart n -> n + 1
+      FromStart n -> n
       FromEnd n -> size - (n + 1)
       Ratio r -> floor (r * fromIntegral size)
 
@@ -187,8 +193,7 @@ renderBarHorizontal :: Char -> Render Result
 renderBarHorizontal char = do
   width <- availableWidth
   let barText = Text.replicate width (Text.singleton char)
-  renderLine $ unstyled barText
-  pure mempty
+  renderLines . pure $ unstyled barText
 
 -------------------------------------------------------------------------------
 
@@ -201,7 +206,7 @@ unstyled :: Text -> StyledLine
 unstyled = styled []
 
 styled :: [Ansi.SGR] -> Text -> StyledLine
-styled style = StyledLine . pure . StyledSegment style
+styled style = StyledLine . map (StyledSegment style) . Text.lines
 
 data StyledSegment = StyledSegment
   { segmentStyle :: [Ansi.SGR],
@@ -217,19 +222,18 @@ renderLines block = do
   width <- availableWidth
   -- We know each element needs at least one line, so no we can discard some
   -- immediately.
-  let unwrapped = Vector.drop (length block - height) block
-  let wrapped = foldMap (wrapStyledLine width) unwrapped
+  let candidates = Vector.drop (length block - height) block
+  let wrapped = foldMap (wrapStyledLine width) candidates
   let visible = drop (length wrapped - height) wrapped
-  let padded = replicate (height - length wrapped) mempty <> visible
-  origin <- spaceOrigin <$> ask
-  liftIO $ Ansi.setCursorPosition (positionRow origin) (positionColumn origin)
-  traverse_ renderLine padded
+  let paddingTop = height - length wrapped
+  zipWithM_ renderLine [paddingTop ..] visible
   pure mempty
 
-renderLine :: StyledLine -> Render ()
-renderLine line = do
+renderLine :: Int -> StyledLine -> Render ()
+renderLine offset line = do
+  origin <- spaceOrigin <$> ask
+  liftIO $ Ansi.setCursorPosition (positionRow origin + offset) (positionColumn origin)
   liftIO $ traverse_ renderSegment $ reverse $ styledSegments line
-  liftIO $ Text.putStr "\n"
   where
     renderSegment (StyledSegment style text) = do
       Ansi.setSGR style

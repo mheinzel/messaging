@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Messaging.Client.GTK.UI where
 
@@ -26,11 +27,13 @@ import GI.Gtk
     entryGetText,
     entrySetText,
   )
+import qualified GI.Gtk as Gtk
 import GI.Gtk.Declarative
 import GI.Gtk.Declarative.App.Simple
 import GI.Gtk.Declarative.Container.Class (Children)
 import Lens.Micro
 import Messaging.Client.Core.State
+import Messaging.Client.GTK.UI.MessageBox
 import qualified Messaging.Shared.Conversation as Conv
 import qualified Messaging.Shared.Message as Msg
 import qualified Messaging.Shared.Request as Req
@@ -40,15 +43,12 @@ import qualified Messaging.Shared.User as User
 data Event
   = Inbound Res.Response
   | Outbound Req.Request
-  | --  | Stick Bool
-    Closed
+  | Closed
   | Ignore
 
 update :: Chan Req.Request -> State -> Event -> Transition State Event
 update _ st (Inbound res) =
   Transition (st & handleServerResponse res) (pure Nothing)
---update _ st (Stick b) =
---  Transition (st & historySticky .~ b) (pure Nothing)
 update out st (Outbound req) =
   Transition st $ writeChan out req $> Nothing
 update _ st Ignore = Transition st (pure Nothing)
@@ -66,16 +66,12 @@ view st =
     $ container
       Box
       [#orientation := OrientationVertical, #valign := AlignEnd]
-      [ bin ScrolledWindow [#propagateNaturalHeight := True] $ viewHistory st,
+      [ bin ScrolledWindow [#propagateNaturalHeight := True] $ ignoreEvent <$> messageBox [classes ["message-box"]] msgs,
         widget Entry [onM #keyPressEvent windowKeyPressEventHandler]
       ]
-
-viewHistory :: FromWidget (Container ListBox (Children (Bin ListBoxRow))) target => State -> target event
-viewHistory st =
-  container ListBox [#valign := AlignEnd] $
-    (st ^. currentHistory) <&> \req ->
-      bin ListBoxRow [#activatable := False, #selectable := False] $
-        widget Label [#label := renderRequest req]
+  where
+    msgs = (st ^. currentHistory) & fmap renderRequest
+    ignoreEvent _ = Ignore
 
 renderRequest :: ConversationHistoryEntry -> Text
 renderRequest (Message user msg) =
@@ -84,10 +80,6 @@ renderRequest (UserJoined user) =
   User.userNameText user <> " JOINED"
 renderRequest (UserLeft user) =
   User.userNameText user <> " LEFT"
-
---scrollEvent :: ScrollType -> Bool -> (Bool, Event)
---scrollEvent ScrollTypeEnd True = trace "stick" (True, Stick True)
---scrollEvent _ _ = trace "DoNt stick" (True, Stick False)
 
 windowKeyPressEventHandler :: EventKey -> Entry -> IO (Bool, Event)
 windowKeyPressEventHandler eventKey entry = do

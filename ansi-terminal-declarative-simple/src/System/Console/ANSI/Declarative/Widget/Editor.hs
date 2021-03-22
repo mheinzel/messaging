@@ -11,6 +11,8 @@ import System.Console.ANSI.Declarative.Widget.Render
 editor :: Text -> Editor
 editor initial = Editor $ Zipper.textZipper (Text.lines initial) Nothing
 
+-- | Limitation: Doesn't handle multi-width Unicode characters well.
+-- Single-width should be fine, though.
 newtype Editor = Editor {getZipper :: Zipper.TextZipper Text}
   deriving (Show)
 
@@ -40,6 +42,16 @@ instance IsWidget Editor where
 
 renderEditor :: Editor -> Render Result
 renderEditor ed = do
-  renderWidget $
-    block . Vector.fromList . fmap unstyled $
-      editorContent ed
+  origin <- currentOrigin
+  size <- availableSize
+  let (row, col) = clampTo size $ Zipper.cursorPosition $ getZipper ed
+  withCursor (origin <> Position row col) $
+    renderWidget $
+      block . Vector.fromList . fmap unstyled $
+        editorContent ed
+  where
+    clampTo (Size height width) (row, col) =
+      let row' = row + col `div` width
+       in if row' >= height
+            then (height - 1, width - 1) -- stick to end/corner
+            else (row', col `mod` width)

@@ -78,12 +78,14 @@ availableWidth = do
 
 offsetBy :: Position -> Render Result -> Render Result
 offsetBy offset =
-  fmap (offsetResultFrom offset)
-    . local (\sp -> sp {spaceOrigin = offset <> spaceOrigin sp})
+  local (\sp -> sp {spaceOrigin = offset <> spaceOrigin sp})
 
 withSize :: Size -> Render Result -> Render Result
 withSize size =
   local (\sp -> sp {spaceSize = size})
+
+withCursor :: Position -> Render Result -> Render Result
+withCursor pos = fmap (Result [pos] <>)
 
 -------------------------------------------------------------------------------
 
@@ -91,10 +93,6 @@ newtype Result = Result
   { resultCursors :: [Position]
   }
   deriving (Show, Semigroup, Monoid)
-
-offsetResultFrom :: Position -> Result -> Result
-offsetResultFrom pos (Result cursors) =
-  Result (map (<> negatePosition pos) cursors)
 
 data ScreenSpace = ScreenSpace
   { spaceOrigin :: Position,
@@ -117,9 +115,6 @@ instance Semigroup Position where
 
 instance Monoid Position where
   mempty = Position 0 0
-
-negatePosition :: Position -> Position
-negatePosition (Position row col) = Position (negate row) (negate col)
 
 data Size = Size
   { sizeRows :: Int,

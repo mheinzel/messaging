@@ -10,6 +10,7 @@ import Control.Monad.Reader.Class (MonadReader, asks, local)
 import Control.Monad.Trans.Reader (ReaderT, runReaderT)
 import qualified System.Console.ANSI as Ansi
 import qualified System.Console.Terminal.Size as Term
+import qualified System.IO as IO
 
 class Show a => IsWidget a where
   renderWidget :: a -> Render Result
@@ -39,10 +40,6 @@ renderToTerminal widget = do
   let screenSpace = ScreenSpace (Position 0 0) size
   result <- runRender screenSpace $ renderWidget widget
 
-  Ansi.setCursorPosition 0 0
-  -- Not exactly sure why, but without this, no output is visible.
-  putStrLn ""
-
   case resultCursors result of
     -- Just take first available cursor for now.
     cursor : _ -> do
@@ -51,6 +48,9 @@ renderToTerminal widget = do
     [] -> do
       -- We already hid the cursor, nothing to do.
       pure ()
+
+  -- This is necessary because of output buffering.
+  IO.hFlush IO.stdout
 
 -------------------------------------------------------------------------------
 

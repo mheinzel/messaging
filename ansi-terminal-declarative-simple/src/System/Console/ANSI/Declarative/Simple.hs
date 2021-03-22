@@ -60,7 +60,7 @@ withTerminalState = bracket setup cleanup . const
       buffOut <- IO.hGetBuffering IO.stdout
       IO.hSetEcho IO.stdin False
       IO.hSetBuffering IO.stdin IO.NoBuffering
-      IO.hSetBuffering IO.stdout IO.LineBuffering
+      IO.hSetBuffering IO.stdout (IO.BlockBuffering Nothing)
       pure (echo, buffIn, buffOut)
 
     cleanup (echo, buffIn, buffOut) = do

@@ -28,15 +28,24 @@ app incomingChan outgoingChan =
     { Simple.update = handleEvent outgoingChan,
       Simple.view = viewState,
       Simple.useKeyboardInput = Just (Just . Input),
-      Simple.getAdditionalEvents = [ServerResponse <$> readChan incomingChan],
+      Simple.getAdditionalEvents =
+        [ ServerResponse <$> readChan incomingChan,
+          Tick <$ Input.waitForTickMilliseconds 1000
+        ],
       Simple.initialState = initialState
     }
 
-data Event = ServerResponse Res.Response | Input Input.KeyboardInput
+data Event
+  = ServerResponse Res.Response
+  | Input Input.KeyboardInput
+  | -- | This makes sure we occasionally re-render the UI, e.g. after resizing
+    -- the terminal.
+    Tick
   deriving (Show)
 
 handleEvent :: Chan Req.Request -> State -> Event -> Simple.Transition State
 handleEvent outgoingChan state = \case
+  Tick -> Simple.Transition $ pure state
   ServerResponse res ->
     Simple.Transition $
       pure $ over coreState (Core.handleServerResponse res) state

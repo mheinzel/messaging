@@ -13,14 +13,14 @@ import Control.Monad (forever)
 import Data.Foldable (toList, traverse_)
 import Data.Traversable (for)
 import qualified System.Console.ANSI as Ansi
-import qualified System.Console.ANSI.Declarative.Input as Input
+import qualified System.Console.ANSI.Declarative.Input.Keyboard as Keyboard
 import qualified System.Console.ANSI.Declarative.Widget as Widget
 import qualified System.IO as IO
 
 data App widget state event = App
   { update :: state -> event -> Transition state,
     view :: state -> widget,
-    useKeyboardInput :: Maybe (Input.KeyboardInput -> Maybe event),
+    useKeyboardInput :: Maybe (Keyboard.KeyboardInput -> Maybe event),
     -- | Each action will be called in its own thread repeatedly and should
     -- block until an event becomes available.
     getAdditionalEvents :: [IO event],
@@ -82,7 +82,7 @@ withEventThreads app action = bracket setup cleanup (action . fst)
       inputThread <- fmap toList $
         for (useKeyboardInput app) $ \embed -> do
           forkIO . forever $ do
-            input <- Input.readInput
+            input <- Keyboard.readInput
             case embed input of
               Just x -> writeChan eventChan x
               Nothing -> pure ()

@@ -26,6 +26,8 @@ dependencies:
 - messaging-shared
 - microlens
 - microlens-th
+- prettyprinter
+- prettyprinter-ansi-terminal
 - text
 - vector
 - websockets

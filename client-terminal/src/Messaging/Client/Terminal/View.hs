@@ -3,14 +3,15 @@
 
 module Messaging.Client.Terminal.View where
 
+import Data.Foldable (toList)
 import Data.Text (Text)
-import Data.Vector (Vector)
-import qualified Data.Vector as Vector
 import qualified Messaging.Client.Core.State as Core
 import Messaging.Client.Terminal.State
 import qualified Messaging.Shared.Conversation as Conv
 import qualified Messaging.Shared.User as User
-import qualified System.Console.ANSI as Ansi
+import Prettyprinter ((<+>))
+import qualified Prettyprinter as PP
+import qualified Prettyprinter.Render.Terminal as PP
 import qualified System.Console.ANSI.Declarative.Widget as Widget
 
 -- This allows aligning the last few arguments of a function nicely without the
@@ -41,41 +42,41 @@ viewSideBar :: Widget.BorderCharacters -> Core.State -> Widget.Border
 viewSideBar borderChars state =
   Widget.border borderChars $
     Widget.padding (Widget.padVertical 1) $
-      Widget.splitTop 4
+      Widget.splitTop 3
         |> do
           Widget.border borderChars $
-            Widget.alignCenter . Widget.block $
-              Vector.fromList
-                [ renderSystemMessage "Conversations",
-                  Widget.unstyled "(just a mockup)"
-                ]
+            Widget.alignCenter . Widget.prettyBlock $
+              renderSystemMessage "Conversations"
         |> do
           Widget.splitBottom 10
             |> do
               Widget.padding (Widget.padHorizontal 1) $
-                viewConversationList $
-                  pure . Core._conversationName $ Core._currentConversation state
+                viewConversationList
+                  [Core._conversationName $ Core._currentConversation state]
             |> do
               viewInstructions
 
 viewInstructions :: Widget.Block
 viewInstructions =
-  Widget.alignBottom . Widget.block $
-    Vector.fromList
-      [ Widget.unstyled "/quit",
-        Widget.unstyled "/sidebar",
-        Widget.unstyled "/unicode",
-        Widget.unstyled "",
-        Widget.unstyled "Enter: send message",
-        Widget.unstyled "Up/Down: select conv",
-        Widget.unstyled "Tab: toggle sidebar",
-        Widget.unstyled "Escape: quit"
+  Widget.alignBottom . Widget.prettyBlock $
+    PP.vsep
+      [ "/quit",
+        "/sidebar",
+        "/unicode",
+        "",
+        "Enter: send message",
+        "Up/Down: select conv",
+        "Tab: toggle sidebar",
+        "Escape: quit"
       ]
 
-viewConversationList :: Vector Conv.ConversationName -> Widget.Block
+viewConversationList :: Foldable f => f Conv.ConversationName -> Widget.Block
 viewConversationList convs =
-  Widget.block $
-    renderConversationName <$> convs
+  Widget.prettyBlock $
+    PP.vsep $
+      map renderConversationName (toList convs)
+        <> pure ""
+        <> pure "(just a mockup)"
 
 -------------------------------------------------------------------------------
 
@@ -95,36 +96,28 @@ viewConversation conv =
 
 viewHistory :: Core.ConversationHistory -> Widget.Block
 viewHistory history =
-  Widget.alignBottom . Widget.block $
-    renderHistoryEntry <$> Core._historyEntries history
+  Widget.alignBottom . Widget.prettyBlock $
+    PP.vsep $
+      renderHistoryEntry <$> toList (Core._historyEntries history)
 
 -------------------------------------------------------------------------------
 
-renderHistoryEntry :: Core.ConversationHistoryEntry -> Widget.StyledLine
+renderHistoryEntry :: Core.ConversationHistoryEntry -> PP.Doc PP.AnsiStyle
 renderHistoryEntry (Core.Message sender msg) =
-  renderUserName sender <> renderMessageBody (": " <> msg)
+  renderUserName sender <> ":" <+> PP.pretty msg
 renderHistoryEntry (Core.UserJoined user) =
   renderSystemMessage (User.userNameText user <> " joined")
 renderHistoryEntry (Core.UserLeft user) =
   renderSystemMessage (User.userNameText user <> " left")
 
-renderSystemMessage :: Text -> Widget.StyledLine
+renderSystemMessage :: Text -> PP.Doc PP.AnsiStyle
 renderSystemMessage =
-  Widget.styled [Ansi.SetColor Ansi.Foreground Ansi.Dull Ansi.Cyan]
+  PP.annotate (PP.color PP.Cyan) . PP.pretty
 
-renderConversationName :: Conv.ConversationName -> Widget.StyledLine
+renderConversationName :: Conv.ConversationName -> PP.Doc PP.AnsiStyle
 renderConversationName =
-  Widget.styled [Ansi.SetColor Ansi.Foreground Ansi.Dull Ansi.Red]
-    . ("#" <>)
-    . Conv.conversationNameText
+  PP.annotate (PP.color PP.Red) . PP.pretty . ("#" <>) . Conv.conversationNameText
 
-renderUserName :: User.UserName -> Widget.StyledLine
+renderUserName :: User.UserName -> PP.Doc PP.AnsiStyle
 renderUserName =
-  Widget.styled
-    [ Ansi.SetColor Ansi.Foreground Ansi.Dull Ansi.Red,
-      Ansi.SetConsoleIntensity Ansi.BoldIntensity
-    ]
-    . User.userNameText
-
-renderMessageBody :: Text -> Widget.StyledLine
-renderMessageBody = Widget.unstyled
+  PP.annotate (PP.color PP.Red <> PP.bold) . PP.pretty . User.userNameText

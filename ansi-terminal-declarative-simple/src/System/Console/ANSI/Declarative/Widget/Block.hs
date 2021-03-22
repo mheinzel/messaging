@@ -1,24 +1,32 @@
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module System.Console.ANSI.Declarative.Widget.Block where
 
-import Control.Monad (zipWithM_)
+import Control.Monad (when)
 import Control.Monad.IO.Class (liftIO)
-import Data.Foldable (traverse_)
-import Data.List (unfoldr)
+import Data.List.NonEmpty (NonEmpty)
+import qualified Data.List.NonEmpty as NonEmpty
+import Data.Maybe (catMaybes)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.IO as Text (putStr)
-import Data.Vector (Vector)
+import qualified Prettyprinter as PP
+import qualified Prettyprinter.Render.Terminal as PP
+import qualified Prettyprinter.Render.Terminal.Internal as PP.Internal
+import qualified Prettyprinter.Render.Util.Panic as PP.Panic
 import qualified System.Console.ANSI as Ansi
 import System.Console.ANSI.Declarative.Widget.Render
 
-block :: Vector StyledLine -> Block
-block = Block AlignTop AlignLeft
+block :: Text -> Block
+block = prettyBlock . PP.pretty
 
+-- | To be used with the @prettyprinter@ and @prettyprinter-ansi-terminal@
+-- packages.
+prettyBlock :: PP.Doc PP.AnsiStyle -> Block
+prettyBlock = Block AlignTop AlignLeft
+
+-- | TODO: Currently, these don't really work.
 alignTop, alignBottom, alignMiddle, alignLeft, alignRight, alignCenter :: Block -> Block
 alignTop b = b {alignHorizontal = AlignTop}
 alignBottom b = b {alignHorizontal = AlignBottom}
@@ -30,7 +38,7 @@ alignCenter b = b {alignVertical = AlignCenter}
 data Block = Block
   { alignHorizontal :: AlignHorizontal,
     alignVertical :: AlignVertical,
-    blockContent :: Vector StyledLine
+    blockContent :: PP.Doc PP.AnsiStyle
   }
   deriving (Show)
 
@@ -46,33 +54,6 @@ data AlignVertical
   | AlignCenter
   deriving (Show)
 
--------------------------------------------------------------------------------
-
--- Not 100% happy with how this section turned out, might want to refactor it.
-newtype StyledLine = StyledLine {styledSegments :: [StyledSegment]}
-  deriving stock (Show)
-  deriving newtype (Semigroup, Monoid)
-
-unstyled :: Text -> StyledLine
-unstyled = styled []
-
-styled :: [Ansi.SGR] -> Text -> StyledLine
-styled style = StyledLine . pure . StyledSegment style . Text.unwords . Text.lines
-
-lineLength :: StyledLine -> Int
-lineLength = sum . map segmentLength . styledSegments
-
-data StyledSegment = StyledSegment
-  { segmentStyle :: [Ansi.SGR],
-    segmentText :: Text
-  }
-  deriving stock (Show)
-
-segmentLength :: StyledSegment -> Int
-segmentLength = Text.length . segmentText
-
--------------------------------------------------------------------------------
-
 instance IsWidget Block where
   renderWidget = renderBlock
 
@@ -80,62 +61,106 @@ instance IsWidget Block where
 -- lines will be shown.
 renderBlock :: Block -> Render Result
 renderBlock (Block alignH alignV content) = do
-  height <- availableHeight
   width <- availableWidth
-  let wrapped = foldMap (wrapStyledLine width) content
-  let paddingTop = paddingAmountHorizontal alignH (length wrapped) height
-  let visible = take height $ drop (negate paddingTop) wrapped
-  zipWithM_ (renderLine alignV) [max 0 paddingTop ..] visible
-  pure mempty
+  let options = PP.LayoutOptions (PP.AvailablePerLine width 1.0)
+  let docStream = PP.layoutSmart options content
+  renderDocStream alignH alignV docStream
 
-renderLine :: AlignVertical -> Int -> StyledLine -> Render ()
-renderLine align offset line = do
+-- | We are rolling our own, because we need a few things 'PP.renderIO' doesn't
+-- offer:
+--
+-- * print with a vertical offset
+-- * really make sure to stop printing when available width is used up
+--   (not sure if a layouting can sometimes still produce lines that are too long)
+-- * stop printing lines when when available height is used up
+renderDocStream ::
+  AlignHorizontal ->
+  AlignVertical ->
+  PP.SimpleDocStream PP.AnsiStyle ->
+  Render Result
+renderDocStream _alignH _alignV docStream = do
   origin <- currentOrigin
-  width <- availableWidth
-  let paddingLeft = paddingAmountVertical align (lineLength line) width
-  let row = positionRow origin + offset
-  let column = positionColumn origin + paddingLeft
-  liftIO $ Ansi.setCursorPosition row column
-  liftIO $ traverse_ renderSegment $ reverse $ styledSegments line
+  size <- availableSize
+  -- Currently just starting at the top, no horizonal aligment.
+  let rowOffset = 0
+
+  liftIO $ mempty <$ renderDocStreamRaw origin size rowOffset docStream
+
+renderDocStreamRaw ::
+  Position ->
+  Size ->
+  -- | row offset
+  Int ->
+  PP.SimpleDocStream PP.AnsiStyle ->
+  IO ()
+renderDocStreamRaw origin size initRowOffset initDocStream = do
+  Ansi.setCursorPosition
+    (positionRow origin)
+    (positionColumn origin)
+  let initColOffset = 0
+  let initStyles = pure mempty :: NonEmpty PP.AnsiStyle
+  renderRaw initRowOffset initColOffset initStyles initDocStream
   where
-    renderSegment (StyledSegment style text) = do
-      Ansi.setSGR style
-      Text.putStr text
+    inRange row col =
+      and [row >= 0, col >= 0, row < sizeRows size, col < sizeColumns size]
+    renderRaw row col styles = \case
+      PP.SFail -> PP.Panic.panicUncaughtFail
+      PP.SEmpty -> pure ()
+      PP.SChar c rest -> do
+        when (inRange row col) $
+          putChar c
+        renderRaw row (col + 1) styles rest
+      PP.SText len txt rest -> do
+        let remainingLength = sizeColumns size - col
+        when (inRange row col) $
+          Text.putStr $ Text.take remainingLength txt
+        renderRaw row (col + min len remainingLength) styles rest
+      PP.SLine indent rest -> do
+        Ansi.setCursorPosition
+          (positionRow origin + row + 1)
+          (positionColumn origin + indent)
+        renderRaw (row + 1) indent styles rest
+      PP.SAnnPush pushedStyle rest -> do
+        let newStyle = pushedStyle <> NonEmpty.head styles
+        Ansi.setSGR $ ansiStyleSGRs newStyle
+        renderRaw row col (NonEmpty.cons newStyle styles) rest
+      PP.SAnnPop rest -> do
+        case NonEmpty.nonEmpty (NonEmpty.tail styles) of
+          Nothing -> PP.Panic.panicUnpairedPop
+          Just styles' -> do
+            Ansi.setSGR $ ansiStyleSGRs $ NonEmpty.head styles'
+            renderRaw row col styles' rest
 
-paddingAmountHorizontal :: AlignHorizontal -> Int -> Int -> Int
-paddingAmountHorizontal align used available =
-  case align of
-    AlignTop -> 0
-    AlignBottom -> available - used
-    AlignMiddle -> (available - used) `div` 2
+-- | This is unfortunately not exposed by 'pretty-printer-ansi-terminal', so we
+-- need to copy it.
+ansiStyleSGRs :: PP.AnsiStyle -> [Ansi.SGR]
+ansiStyleSGRs style =
+  catMaybes
+    [ Just Ansi.Reset,
+      flip fmap (PP.Internal.ansiForeground style) $ \(int, c) ->
+        Ansi.SetColor Ansi.Foreground (convertIntensity int) (convertColor c),
+      flip fmap (PP.Internal.ansiBackground style) $ \(int, c) ->
+        Ansi.SetColor Ansi.Background (convertIntensity int) (convertColor c),
+      flip fmap (PP.Internal.ansiBold style) $ \_ ->
+        Ansi.SetConsoleIntensity Ansi.BoldIntensity,
+      flip fmap (PP.Internal.ansiItalics style) $ \_ ->
+        Ansi.SetItalicized True,
+      flip fmap (PP.Internal.ansiUnderlining style) $ \_ ->
+        Ansi.SetUnderlining Ansi.SingleUnderline
+    ]
+  where
+    convertIntensity :: PP.Intensity -> Ansi.ColorIntensity
+    convertIntensity = \case
+      PP.Vivid -> Ansi.Vivid
+      PP.Dull -> Ansi.Dull
 
-paddingAmountVertical :: AlignVertical -> Int -> Int -> Int
-paddingAmountVertical align used available =
-  case align of
-    AlignLeft -> 0
-    AlignRight -> available - used
-    AlignCenter -> (available - used) `div` 2
-
-wrapStyledLine :: Int -> StyledLine -> [StyledLine]
-wrapStyledLine width = unfoldr $ \case
-  StyledLine [] -> Nothing
-  line -> Just (splitStyledLine width line)
-
-splitStyledLine :: Int -> StyledLine -> (StyledLine, StyledLine)
-splitStyledLine width line = case styledSegments line of
-  [] ->
-    (mempty, mempty)
-  seg : rest ->
-    let widthAfter = width - Text.length (segmentText seg)
-     in if widthAfter >= 0
-          then
-            let (pre, post) = splitStyledLine widthAfter (StyledLine rest)
-             in (pre <> StyledLine [seg], post)
-          else
-            let (segmentPre, segmentPost) = splitStyledSegment width seg
-             in (StyledLine [segmentPre], StyledLine (segmentPost : rest))
-
-splitStyledSegment :: Int -> StyledSegment -> (StyledSegment, StyledSegment)
-splitStyledSegment width (StyledSegment style text) =
-  let (pre, post) = Text.splitAt width text
-   in (StyledSegment style pre, StyledSegment style post)
+    convertColor :: PP.Color -> Ansi.Color
+    convertColor = \case
+      PP.Black -> Ansi.Black
+      PP.Red -> Ansi.Red
+      PP.Green -> Ansi.Green
+      PP.Yellow -> Ansi.Yellow
+      PP.Blue -> Ansi.Blue
+      PP.Magenta -> Ansi.Magenta
+      PP.Cyan -> Ansi.Cyan
+      PP.White -> Ansi.White

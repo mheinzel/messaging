@@ -3,9 +3,8 @@ module System.Console.ANSI.Declarative.Widget.Editor where
 import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Text.Zipper as Zipper
-import qualified Data.Vector as Vector
 import System.Console.ANSI.Declarative.Input (KeyboardArrow (..), KeyboardInput (..))
-import System.Console.ANSI.Declarative.Widget.Block (block, unstyled)
+import System.Console.ANSI.Declarative.Widget.Block (block)
 import System.Console.ANSI.Declarative.Widget.Render
 
 editor :: Text -> Editor
@@ -47,7 +46,7 @@ renderEditor ed = do
   let (row, col) = clampTo size $ Zipper.cursorPosition $ getZipper ed
   withCursor (origin <> Position row col) $
     renderWidget $
-      block . Vector.fromList . fmap unstyled $
+      block . Text.unlines $
         editorContent ed
   where
     clampTo (Size height width) (row, col) =

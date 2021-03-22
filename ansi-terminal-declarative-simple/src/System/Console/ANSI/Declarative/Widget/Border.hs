@@ -2,9 +2,9 @@ module System.Console.ANSI.Declarative.Widget.Border where
 
 import Data.Foldable (fold)
 import Data.Functor (void)
+import qualified Data.List as List
 import qualified Data.Text as Text
-import qualified Data.Vector as Vector
-import System.Console.ANSI.Declarative.Widget.Block (block, unstyled)
+import System.Console.ANSI.Declarative.Widget.Block (block)
 import System.Console.ANSI.Declarative.Widget.Padding (padAll, padding)
 import System.Console.ANSI.Declarative.Widget.Render
 
@@ -74,17 +74,17 @@ renderBorderOutline chars = do
   -- LEFT
   void . offsetBy mempty $
     withSize size {sizeColumns = 1} $
-      renderPlain . Vector.replicate height $
+      renderPlain . List.replicate height $
         Text.singleton (borderCharLeft chars)
   -- RIGHT
   void . offsetBy mempty {positionColumn = width - 1} $
     withSize size {sizeColumns = 1} $
-      renderPlain . Vector.replicate height $
+      renderPlain . List.replicate height $
         Text.singleton (borderCharRight chars)
   -- TOP
   void . offsetBy mempty $
     withSize size {sizeRows = 1} $
-      renderPlain . Vector.singleton . fold $
+      renderPlain . pure . fold $
         [ Text.singleton (borderCharCornerTopLeft chars),
           Text.replicate (width - 2) (Text.singleton (borderCharTop chars)),
           Text.singleton (borderCharCornerTopRight chars)
@@ -92,11 +92,11 @@ renderBorderOutline chars = do
   -- BOTTOM
   void . offsetBy mempty {positionRow = height - 1} $
     withSize size {sizeRows = 1} $
-      renderPlain . Vector.singleton . fold $
+      renderPlain . pure . fold $
         [ Text.singleton (borderCharCornerBottomLeft chars),
           Text.replicate (width - 2) (Text.singleton (borderCharBottom chars)),
           Text.singleton (borderCharCornerBottomRight chars)
         ]
   where
     renderPlain =
-      renderWidget . block . fmap unstyled
+      renderWidget . block . Text.unlines

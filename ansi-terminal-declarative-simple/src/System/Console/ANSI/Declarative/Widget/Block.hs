@@ -24,22 +24,52 @@ block = prettyBlock . PP.pretty
 -- | To be used with the @prettyprinter@ and @prettyprinter-ansi-terminal@
 -- packages.
 prettyBlock :: PP.Doc PP.AnsiStyle -> Block
-prettyBlock = Block AlignTop AlignLeft
+prettyBlock = Block AlignTop
 
-alignTop, alignBottom, alignMiddle:: Block -> Block
+alignTop, alignBottom, alignMiddle :: Block -> Block
 alignTop b = b {alignTopBottom = AlignTop}
 alignBottom b = b {alignTopBottom = AlignBottom}
 alignMiddle b = b {alignTopBottom = AlignMiddle}
 
--- | TODO: Currently, these don't really work.
-alignLeft, alignRight, alignCenter :: Block -> Block
-alignLeft b = b {alignLeftRight = AlignLeft}
-alignRight b = b {alignLeftRight = AlignRight}
-alignCenter b = b {alignLeftRight = AlignCenter}
+-- | A bit hacky, but useful combinator that doesn't seem to be implemented
+-- elsewhere.
+-- Will break lines at explicit newlines only.
+--
+-- Only really makes sense when a 'PP.PageWidth' is provided during rendering
+-- (as it will be with this widget).
+centeredText :: Text -> PP.Doc a
+centeredText txt =
+  PP.vcat $ map center $ Text.lines txt
+  where
+    center line =
+      PP.pageWidth $ \case
+        PP.Unbounded ->
+          PP.pretty line -- not much we can do here
+        PP.AvailablePerLine w _ ->
+          indentAbsolute ((w - Text.length line) `div` 2) (PP.pretty line)
+
+-- | A bit hacky, but useful combinator that doesn't seem to be implemented
+-- elsewhere.
+-- Will break lines at explicit newlines only.
+--
+-- Only really makes sense when a 'PP.PageWidth' is provided during rendering
+-- (as it will be with this widget).
+rightAlignedText :: Text -> PP.Doc a
+rightAlignedText txt =
+  PP.vcat $ map center $ Text.lines txt
+  where
+    center line =
+      PP.pageWidth $ \case
+        PP.Unbounded ->
+          PP.pretty line -- not much we can do here
+        PP.AvailablePerLine w _ ->
+          indentAbsolute (w - Text.length line) (PP.pretty line)
+
+indentAbsolute :: Int -> PP.Doc a -> PP.Doc a
+indentAbsolute i doc = PP.column $ \c -> PP.indent (i - c) doc
 
 data Block = Block
   { alignTopBottom :: AlignTopBottom,
-    alignLeftRight :: AlignLeftRight,
     blockContent :: PP.Doc PP.AnsiStyle
   }
   deriving (Show)
@@ -50,23 +80,17 @@ data AlignTopBottom
   | AlignMiddle
   deriving (Show)
 
-data AlignLeftRight
-  = AlignLeft
-  | AlignRight
-  | AlignCenter
-  deriving (Show)
-
 instance IsWidget Block where
   renderWidget = renderBlock
 
 -- | Wraps lines. If there is not enough vertical space available, the last
 -- lines will be shown.
 renderBlock :: Block -> Render Result
-renderBlock (Block alignTB alignLR content) = do
+renderBlock (Block alignTB content) = do
   width <- availableWidth
   let options = PP.LayoutOptions (PP.AvailablePerLine width 1.0)
   let docStream = PP.layoutSmart options content
-  renderDocStream alignTB alignLR docStream
+  renderDocStream alignTB docStream
 
 -- | We are rolling our own, because we need a few things 'PP.renderIO' doesn't
 -- offer:
@@ -77,10 +101,9 @@ renderBlock (Block alignTB alignLR content) = do
 -- * stop printing lines when when available height is used up
 renderDocStream ::
   AlignTopBottom ->
-  AlignLeftRight ->
   PP.SimpleDocStream PP.AnsiStyle ->
   Render Result
-renderDocStream alignTB _alignLR docStream = do
+renderDocStream alignTB docStream = do
   origin <- currentOrigin
   size <- availableSize
   let rowOffset = case alignTB of

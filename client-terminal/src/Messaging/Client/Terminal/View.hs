@@ -5,6 +5,7 @@ module Messaging.Client.Terminal.View where
 
 import Data.Foldable (toList)
 import Data.Text (Text)
+import qualified Data.Text as Text
 import qualified Messaging.Client.Core.State as Core
 import Messaging.Client.Terminal.State
 import qualified Messaging.Shared.Conversation as Conv
@@ -45,8 +46,9 @@ viewSideBar borderChars state =
       Widget.splitTop 3
         |> do
           Widget.border borderChars $
-            Widget.alignCenter . Widget.prettyBlock $
-              renderSystemMessage "Conversations"
+            Widget.prettyBlock $
+              PP.annotate (PP.color PP.Cyan) $
+                Widget.centeredText "Conversations"
         |> do
           Widget.splitBottom 10
             |> do

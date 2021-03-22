@@ -14,12 +14,12 @@ import Data.Foldable (toList, traverse_)
 import Data.Traversable (for)
 import qualified System.Console.ANSI as Ansi
 import qualified System.Console.ANSI.Declarative.Input as Input
-import qualified System.Console.ANSI.Declarative.View as View
+import qualified System.Console.ANSI.Declarative.Widget as Widget
 import qualified System.IO as IO
 
-data App state event = App
+data App widget state event = App
   { update :: state -> event -> Transition state,
-    view :: state -> View.View,
+    view :: state -> widget,
     useKeyboardInput :: Maybe (Input.KeyboardInput -> Maybe event),
     -- | Each action will be called in its own thread repeatedly and should
     -- block until an event becomes available.
@@ -31,7 +31,7 @@ data Transition state
   = Transition (IO state)
   | Exit
 
-runApp :: App state event -> IO state
+runApp :: Widget.IsWidget widget => App widget state event -> IO state
 runApp app = do
   withTerminalState $
     -- Only now, after setting up stdin properly, start reading input.
@@ -39,7 +39,7 @@ runApp app = do
       run eventChan (initialState app)
   where
     run eventChan !state = do
-      View.render (view app state)
+      Widget.renderToTerminal (view app state)
       -- Ideally, we would read multiple events at once here, but this requires
       -- switching to a Chan that allows non-blocking reads.
       -- Otherwise, we get blocked after some previous events and cannot show
@@ -74,7 +74,7 @@ withTerminalState = bracket setup cleanup . const
 
 -- IDEA: If we used the async package here, we coul check whether any of the
 -- spawned threads terminated and re-raise the exception in the main thread.
-withEventThreads :: App state event -> (Chan event -> IO a) -> IO a
+withEventThreads :: App widget state event -> (Chan event -> IO a) -> IO a
 withEventThreads app action = bracket setup cleanup (action . fst)
   where
     setup = do

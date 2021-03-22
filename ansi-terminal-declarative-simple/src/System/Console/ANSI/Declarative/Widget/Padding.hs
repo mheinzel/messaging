@@ -24,16 +24,10 @@ instance Semigroup PaddingStyle where
     PaddingStyle (t1 + t2) (b1 + b2) (l1 + l2) (r1 + r2)
 
 instance Monoid PaddingStyle where
-  mempty = PaddingStyle 0 0 0 0
+  mempty = padAll 0
 
 padAll :: Int -> PaddingStyle
-padAll n = padHorizontal n <> padVertical n
-
-padHorizontal :: Int -> PaddingStyle
-padHorizontal n = padTop n <> padBottom n
-
-padVertical :: Int -> PaddingStyle
-padVertical n = padLeft n <> padRight n
+padAll n = PaddingStyle n n n n
 
 padTop :: Int -> PaddingStyle
 padTop n = mempty {paddingTop = n}

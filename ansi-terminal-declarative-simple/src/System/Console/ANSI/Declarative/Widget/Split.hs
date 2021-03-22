@@ -13,17 +13,17 @@ splitTop,
   splitLeft,
   splitRight ::
     (IsWidget a, IsWidget b) => Int -> a -> b -> Split
-splitTop n = split Horizontal (FromStart n)
-splitBottom n = split Horizontal (FromEnd n)
-splitLeft n = split Vertical (FromStart n)
-splitRight n = split Vertical (FromEnd n)
+splitTop n = split TopBottom (FromStart n)
+splitBottom n = split TopBottom (FromEnd n)
+splitLeft n = split LeftRight (FromStart n)
+splitRight n = split LeftRight (FromEnd n)
 
 data Split = Split SplitDir SplitPos SomeWidget SomeWidget
   deriving (Show)
 
 data SplitDir
-  = Horizontal
-  | Vertical
+  = TopBottom
+  | LeftRight
   deriving (Show)
 
 data SplitPos
@@ -36,7 +36,7 @@ instance IsWidget Split where
   renderWidget = renderSplit
 
 renderSplit :: Split -> Render Result
-renderSplit (Split Horizontal pos top bot) = do
+renderSplit (Split TopBottom pos top bot) = do
   size <- availableSize
   height <- availableHeight
   let n = splitOffset height pos
@@ -48,7 +48,7 @@ renderSplit (Split Horizontal pos top bot) = do
         withSize size {sizeRows = height - n} $
           renderWidget bot
     ]
-renderSplit (Split Vertical pos top bot) = do
+renderSplit (Split LeftRight pos top bot) = do
   size <- availableSize
   width <- availableWidth
   let n = splitOffset width pos

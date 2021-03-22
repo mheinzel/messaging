@@ -27,28 +27,31 @@ prettyBlock :: PP.Doc PP.AnsiStyle -> Block
 prettyBlock = Block AlignTop AlignLeft
 
 -- | TODO: Currently, these don't really work.
-alignTop, alignBottom, alignMiddle, alignLeft, alignRight, alignCenter :: Block -> Block
-alignTop b = b {alignHorizontal = AlignTop}
-alignBottom b = b {alignHorizontal = AlignBottom}
-alignMiddle b = b {alignHorizontal = AlignMiddle}
-alignLeft b = b {alignVertical = AlignLeft}
-alignRight b = b {alignVertical = AlignRight}
-alignCenter b = b {alignVertical = AlignCenter}
+alignTop, alignBottom, alignMiddle:: Block -> Block
+alignTop b = b {alignTopBottom = AlignTop}
+alignBottom b = b {alignTopBottom = AlignBottom}
+alignMiddle b = b {alignTopBottom = AlignMiddle}
+
+-- | TODO: Currently, these don't really work.
+alignLeft, alignRight, alignCenter :: Block -> Block
+alignLeft b = b {alignLeftRight = AlignLeft}
+alignRight b = b {alignLeftRight = AlignRight}
+alignCenter b = b {alignLeftRight = AlignCenter}
 
 data Block = Block
-  { alignHorizontal :: AlignHorizontal,
-    alignVertical :: AlignVertical,
+  { alignTopBottom :: AlignTopBottom,
+    alignLeftRight :: AlignLeftRight,
     blockContent :: PP.Doc PP.AnsiStyle
   }
   deriving (Show)
 
-data AlignHorizontal
+data AlignTopBottom
   = AlignTop
   | AlignBottom
   | AlignMiddle
   deriving (Show)
 
-data AlignVertical
+data AlignLeftRight
   = AlignLeft
   | AlignRight
   | AlignCenter
@@ -60,11 +63,11 @@ instance IsWidget Block where
 -- | Wraps lines. If there is not enough vertical space available, the last
 -- lines will be shown.
 renderBlock :: Block -> Render Result
-renderBlock (Block alignH alignV content) = do
+renderBlock (Block alignTB alignLR content) = do
   width <- availableWidth
   let options = PP.LayoutOptions (PP.AvailablePerLine width 1.0)
   let docStream = PP.layoutSmart options content
-  renderDocStream alignH alignV docStream
+  renderDocStream alignTB alignLR docStream
 
 -- | We are rolling our own, because we need a few things 'PP.renderIO' doesn't
 -- offer:
@@ -74,11 +77,11 @@ renderBlock (Block alignH alignV content) = do
 --   (not sure if a layouting can sometimes still produce lines that are too long)
 -- * stop printing lines when when available height is used up
 renderDocStream ::
-  AlignHorizontal ->
-  AlignVertical ->
+  AlignTopBottom ->
+  AlignLeftRight ->
   PP.SimpleDocStream PP.AnsiStyle ->
   Render Result
-renderDocStream _alignH _alignV docStream = do
+renderDocStream _alignTB _alignLR docStream = do
   origin <- currentOrigin
   size <- availableSize
   -- Currently just starting at the top, no horizonal aligment.

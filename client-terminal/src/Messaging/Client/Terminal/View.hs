@@ -41,7 +41,7 @@ viewState state
 viewSideBar :: Widget.BorderCharacters -> Core.State -> Widget.Border
 viewSideBar borderChars state =
   Widget.border borderChars $
-    Widget.padding (Widget.padVertical 1) $
+    Widget.padding (Widget.padLeft 1 <> Widget.padRight 1) $
       Widget.splitTop 3
         |> do
           Widget.border borderChars $
@@ -50,7 +50,7 @@ viewSideBar borderChars state =
         |> do
           Widget.splitBottom 10
             |> do
-              Widget.padding (Widget.padHorizontal 1) $
+              Widget.padding (Widget.padTop 1) $
                 viewConversationList
                   [Core._conversationName $ Core._currentConversation state]
             |> do
@@ -84,7 +84,7 @@ viewMainWindow :: Widget.BorderCharacters -> State -> Widget.Split
 viewMainWindow borderChars state =
   Widget.splitBottom 5
     |> do
-      Widget.padding (Widget.padVertical 1) $
+      Widget.padding (Widget.padLeft 1 <> Widget.padRight 1) $
         viewConversation (Core._currentConversation $ _coreState state)
     |> do
       Widget.border borderChars $

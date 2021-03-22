@@ -26,7 +26,6 @@ block = prettyBlock . PP.pretty
 prettyBlock :: PP.Doc PP.AnsiStyle -> Block
 prettyBlock = Block AlignTop AlignLeft
 
--- | TODO: Currently, these don't really work.
 alignTop, alignBottom, alignMiddle:: Block -> Block
 alignTop b = b {alignTopBottom = AlignTop}
 alignBottom b = b {alignTopBottom = AlignBottom}
@@ -81,13 +80,27 @@ renderDocStream ::
   AlignLeftRight ->
   PP.SimpleDocStream PP.AnsiStyle ->
   Render Result
-renderDocStream _alignTB _alignLR docStream = do
+renderDocStream alignTB _alignLR docStream = do
   origin <- currentOrigin
   size <- availableSize
-  -- Currently just starting at the top, no horizonal aligment.
-  let rowOffset = 0
+  let rowOffset = case alignTB of
+        AlignTop -> 0
+        AlignBottom -> sizeRows size - requiredLines docStream
+        AlignMiddle -> (sizeRows size - requiredLines docStream) `div` 2
 
   liftIO $ mempty <$ renderDocStreamRaw origin size rowOffset docStream
+
+requiredLines :: PP.SimpleDocStream a -> Int
+requiredLines = req 1
+  where
+    req count = \case
+      PP.SFail -> 0
+      PP.SEmpty -> count
+      PP.SChar _ rest -> req count rest
+      PP.SText _ _ rest -> req count rest
+      PP.SLine _ rest -> req (count + 1) rest
+      PP.SAnnPush _ rest -> req count rest
+      PP.SAnnPop rest -> req count rest
 
 renderDocStreamRaw ::
   Position ->
@@ -98,7 +111,7 @@ renderDocStreamRaw ::
   IO ()
 renderDocStreamRaw origin size initRowOffset initDocStream = do
   Ansi.setCursorPosition
-    (positionRow origin)
+    (positionRow origin + initRowOffset)
     (positionColumn origin)
   let initColOffset = 0
   let initStyles = pure mempty :: NonEmpty PP.AnsiStyle
@@ -119,9 +132,10 @@ renderDocStreamRaw origin size initRowOffset initDocStream = do
           Text.putStr $ Text.take remainingLength txt
         renderRaw row (col + min len remainingLength) styles rest
       PP.SLine indent rest -> do
-        Ansi.setCursorPosition
-          (positionRow origin + row + 1)
-          (positionColumn origin + indent)
+        when (inRange (row + 1) indent) $
+          Ansi.setCursorPosition
+            (positionRow origin + row + 1)
+            (positionColumn origin + indent)
         renderRaw (row + 1) indent styles rest
       PP.SAnnPush pushedStyle rest -> do
         let newStyle = pushedStyle <> NonEmpty.head styles

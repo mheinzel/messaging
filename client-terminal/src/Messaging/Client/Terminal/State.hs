@@ -9,12 +9,12 @@ import Lens.Micro (over, set)
 import Lens.Micro.TH (makeLenses)
 import qualified Messaging.Client.Core.State as Core
 import qualified Messaging.Shared.Conversation as Conv
-import qualified System.Console.ANSI.Declarative.Editor as Ansi
 import qualified System.Console.ANSI.Declarative.Input as Ansi
+import qualified System.Console.ANSI.Declarative.Widget as Widget
 
 data State = State
   { _coreState :: Core.State,
-    _editor :: Ansi.Editor,
+    _editor :: Widget.Editor,
     _sidebarExpanded :: Bool,
     _unicodeEnabled :: Bool
   }
@@ -27,13 +27,13 @@ currentConversationName =
   Core._conversationName . Core._currentConversation . _coreState
 
 handleEditorInput :: Ansi.KeyboardInput -> State -> State
-handleEditorInput input = over editor (Ansi.handleInput input)
+handleEditorInput input = over editor (Widget.handleInput input)
 
 resetEditor :: State -> State
-resetEditor = set editor (Ansi.editor "")
+resetEditor = set editor (Widget.editor "")
 
 editorContent :: State -> [Text]
-editorContent = Ansi.editorContent . _editor
+editorContent = Widget.editorContent . _editor
 
 toggleSidebar :: State -> State
 toggleSidebar = over sidebarExpanded not
@@ -42,4 +42,4 @@ toggleUnicode :: State -> State
 toggleUnicode = over unicodeEnabled not
 
 initialState :: State
-initialState = State Core.emptyState (Ansi.editor "") True False
+initialState = State Core.emptyState (Widget.editor "") True False

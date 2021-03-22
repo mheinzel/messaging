@@ -11,92 +11,96 @@ import Messaging.Client.Terminal.State
 import qualified Messaging.Shared.Conversation as Conv
 import qualified Messaging.Shared.User as User
 import qualified System.Console.ANSI as Ansi
-import qualified System.Console.ANSI.Declarative.Editor as Ansi
-import qualified System.Console.ANSI.Declarative.View as Ansi
+import qualified System.Console.ANSI.Declarative.Widget as Widget
 
+-- This allows aligning the last few arguments of a function nicely without the
+-- formatter trying to also align the first arguments.
+-- Maybe there's a better way to keep things nice.
 (|>) :: (a -> b) -> a -> b
 (|>) = ($)
 
 infixl 9 |>
 
-viewState :: State -> Ansi.View
+viewState :: State -> Widget.SomeWidget
 viewState state
   | _sidebarExpanded state =
-    Ansi.Split Ansi.Vertical (Ansi.FromEnd 26)
-      |> viewMainWindow borderChars state
-      |> viewSideBar borderChars (_coreState state)
+    Widget.SomeWidget $
+      Widget.splitRight 26
+        |> viewMainWindow borderChars state
+        |> viewSideBar borderChars (_coreState state)
   | otherwise =
-    viewMainWindow borderChars state
+    Widget.SomeWidget $
+      viewMainWindow borderChars state
   where
     borderChars =
       if _unicodeEnabled state
-        then Ansi.unicodeChars
-        else Ansi.asciiChars
+        then Widget.unicodeChars
+        else Widget.asciiChars
 
-viewSideBar :: Ansi.BorderCharacters -> Core.State -> Ansi.View
+viewSideBar :: Widget.BorderCharacters -> Core.State -> Widget.Border
 viewSideBar borderChars state =
-  Ansi.Border borderChars $
-    Ansi.Padding (Ansi.padVertical 1) $
-      Ansi.Split Ansi.Horizontal (Ansi.FromStart 4)
+  Widget.border borderChars $
+    Widget.padding (Widget.padVertical 1) $
+      Widget.splitTop 4
         |> do
-          Ansi.Border borderChars $
-            Ansi.Block Ansi.AlignTop Ansi.AlignCenter $
+          Widget.border borderChars $
+            Widget.alignCenter . Widget.block $
               Vector.fromList
                 [ renderSystemMessage "Conversations",
-                  Ansi.unstyled "(just a mockup)"
+                  Widget.unstyled "(just a mockup)"
                 ]
         |> do
-          Ansi.Split Ansi.Horizontal (Ansi.FromEnd 10)
+          Widget.splitBottom 10
             |> do
-              Ansi.Padding (Ansi.padHorizontal 1) $
+              Widget.padding (Widget.padHorizontal 1) $
                 viewConversationList $
                   pure . Core._conversationName $ Core._currentConversation state
             |> do
               viewInstructions
 
-viewInstructions :: Ansi.View
+viewInstructions :: Widget.Block
 viewInstructions =
-  Ansi.Block Ansi.AlignBottom Ansi.AlignLeft $
+  Widget.alignBottom . Widget.block $
     Vector.fromList
-      [ Ansi.unstyled "/quit",
-        Ansi.unstyled "/sidebar",
-        Ansi.unstyled "/unicode",
-        Ansi.unstyled "",
-        Ansi.unstyled "Enter: send message",
-        Ansi.unstyled "Up/Down: select conv",
-        Ansi.unstyled "Tab: toggle sidebar",
-        Ansi.unstyled "Escape: quit"
+      [ Widget.unstyled "/quit",
+        Widget.unstyled "/sidebar",
+        Widget.unstyled "/unicode",
+        Widget.unstyled "",
+        Widget.unstyled "Enter: send message",
+        Widget.unstyled "Up/Down: select conv",
+        Widget.unstyled "Tab: toggle sidebar",
+        Widget.unstyled "Escape: quit"
       ]
 
-viewConversationList :: Vector Conv.ConversationName -> Ansi.View
+viewConversationList :: Vector Conv.ConversationName -> Widget.Block
 viewConversationList convs =
-  Ansi.Block Ansi.AlignTop Ansi.AlignLeft $
+  Widget.block $
     renderConversationName <$> convs
 
 -------------------------------------------------------------------------------
 
-viewMainWindow :: Ansi.BorderCharacters -> State -> Ansi.View
+viewMainWindow :: Widget.BorderCharacters -> State -> Widget.Split
 viewMainWindow borderChars state =
-  Ansi.Split Ansi.Horizontal (Ansi.FromEnd 5)
+  Widget.splitBottom 5
     |> do
-      Ansi.Padding (Ansi.padVertical 1) $
+      Widget.padding (Widget.padVertical 1) $
         viewConversation (Core._currentConversation $ _coreState state)
     |> do
-      Ansi.Border borderChars $
-        Ansi.viewEditor (_editor state)
+      Widget.border borderChars $
+        _editor state
 
-viewConversation :: Core.ConversationState -> Ansi.View
+viewConversation :: Core.ConversationState -> Widget.Block
 viewConversation conv =
   viewHistory $ Core._conversationHistory conv
 
-viewHistory :: Core.ConversationHistory -> Ansi.View
+viewHistory :: Core.ConversationHistory -> Widget.Block
 viewHistory history =
-  Ansi.Block Ansi.AlignBottom Ansi.AlignLeft $
+  Widget.alignBottom . Widget.block $
     renderHistoryEntry <$> Core._historyEntries history
 
 -------------------------------------------------------------------------------
 
-renderHistoryEntry :: Core.ConversationHistoryEntry -> Ansi.StyledLine
+renderHistoryEntry :: Core.ConversationHistoryEntry -> Widget.StyledLine
 renderHistoryEntry (Core.Message sender msg) =
   renderUserName sender <> renderMessageBody (": " <> msg)
 renderHistoryEntry (Core.UserJoined user) =
@@ -104,23 +108,23 @@ renderHistoryEntry (Core.UserJoined user) =
 renderHistoryEntry (Core.UserLeft user) =
   renderSystemMessage (User.userNameText user <> " left")
 
-renderSystemMessage :: Text -> Ansi.StyledLine
+renderSystemMessage :: Text -> Widget.StyledLine
 renderSystemMessage =
-  Ansi.styled [Ansi.SetColor Ansi.Foreground Ansi.Dull Ansi.Cyan]
+  Widget.styled [Ansi.SetColor Ansi.Foreground Ansi.Dull Ansi.Cyan]
 
-renderConversationName :: Conv.ConversationName -> Ansi.StyledLine
+renderConversationName :: Conv.ConversationName -> Widget.StyledLine
 renderConversationName =
-  Ansi.styled [Ansi.SetColor Ansi.Foreground Ansi.Dull Ansi.Red]
+  Widget.styled [Ansi.SetColor Ansi.Foreground Ansi.Dull Ansi.Red]
     . ("#" <>)
     . Conv.conversationNameText
 
-renderUserName :: User.UserName -> Ansi.StyledLine
+renderUserName :: User.UserName -> Widget.StyledLine
 renderUserName =
-  Ansi.styled
+  Widget.styled
     [ Ansi.SetColor Ansi.Foreground Ansi.Dull Ansi.Red,
       Ansi.SetConsoleIntensity Ansi.BoldIntensity
     ]
     . User.userNameText
 
-renderMessageBody :: Text -> Ansi.StyledLine
-renderMessageBody = Ansi.unstyled
+renderMessageBody :: Text -> Widget.StyledLine
+renderMessageBody = Widget.unstyled

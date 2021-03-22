@@ -14,11 +14,12 @@ import Data.Foldable (traverse_)
 import Data.Traversable (for)
 import qualified System.Console.ANSI as Ansi
 import qualified System.Console.ANSI.Declarative.Widget as Widget
+import qualified System.Console.Terminal.Size as Term
 import qualified System.IO as IO
 
 data App widget state event = App
   { update :: state -> event -> Transition state,
-    view :: state -> widget,
+    view :: Widget.Size -> state -> widget,
     -- | Each action will be called in its own thread repeatedly and should
     -- block until an event becomes available.
     -- See 'System.Console.ANSI.Declarative.Simple.Input'.
@@ -38,7 +39,8 @@ runApp app = do
       run eventChan (initialState app)
   where
     run eventChan !state = do
-      Widget.renderToTerminal (view app state)
+      size <- maximalSize
+      Widget.renderToTerminal size (view app size state)
       -- Ideally, we would read multiple events at once here before re-rendering,
       -- but this requires switching to a Chan that allows non-blocking reads.
       -- Otherwise, we get blocked after some previous events and cannot show
@@ -49,6 +51,15 @@ runApp app = do
         Transition trans -> do
           state' <- trans
           run eventChan state'
+
+maximalSize :: IO Widget.Size
+maximalSize = do
+  window <- Term.size
+  pure $
+    Widget.Size
+      { Widget.sizeRows = maybe 24 Term.height window,
+        Widget.sizeColumns = maybe 72 Term.width window
+      }
 
 withTerminalState :: IO a -> IO a
 withTerminalState = bracket setup cleanup . const

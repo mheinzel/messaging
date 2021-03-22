@@ -9,7 +9,6 @@ import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader.Class (MonadReader, asks, local)
 import Control.Monad.Trans.Reader (ReaderT, runReaderT)
 import qualified System.Console.ANSI as Ansi
-import qualified System.Console.Terminal.Size as Term
 import qualified System.IO as IO
 
 class Show a => IsWidget a where
@@ -25,18 +24,12 @@ instance IsWidget SomeWidget where
 
 -------------------------------------------------------------------------------
 
-renderToTerminal :: IsWidget a => a -> IO ()
-renderToTerminal widget = do
-  window <- Term.size
+renderToTerminal :: IsWidget a => Size -> a -> IO ()
+renderToTerminal size widget = do
   Ansi.hideCursor
   Ansi.setSGR [Ansi.Reset]
   Ansi.clearScreen
   Ansi.setCursorPosition 0 0
-  let size =
-        Size
-          { sizeRows = maybe 24 Term.height window,
-            sizeColumns = maybe 72 Term.width window
-          }
   let screenSpace = ScreenSpace (Position 0 0) size
   result <- runRender screenSpace $ renderWidget widget
 

@@ -26,7 +26,7 @@ app :: Chan Res.Response -> Chan Req.Request -> Simple.App Widget.SomeWidget Sta
 app incomingChan outgoingChan =
   Simple.App
     { Simple.update = handleEvent outgoingChan,
-      Simple.view = viewState,
+      Simple.view = const viewState,
       Simple.events =
         [ ServerResponse <$> readChan incomingChan,
           Input <$> Input.readInput,

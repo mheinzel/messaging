@@ -27,9 +27,9 @@ app incomingChan outgoingChan =
   Simple.App
     { Simple.update = handleEvent outgoingChan,
       Simple.view = viewState,
-      Simple.useKeyboardInput = Just (Just . Input),
-      Simple.getAdditionalEvents =
+      Simple.events =
         [ ServerResponse <$> readChan incomingChan,
+          Input <$> Input.readInput,
           Tick <$ Input.waitForTickMilliseconds 1000
         ],
       Simple.initialState = initialState

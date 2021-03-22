@@ -2,6 +2,7 @@ module System.Console.ANSI.Declarative.Input
   ( -- * Keyboard input
     KeyboardInput (..),
     KeyboardArrow (..),
+    readInput,
 
     -- * Tick
     Tick (..),

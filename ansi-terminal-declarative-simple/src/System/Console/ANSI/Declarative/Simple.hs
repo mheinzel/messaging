@@ -10,20 +10,19 @@ where
 import Control.Concurrent (Chan, forkIO, killThread, newChan, readChan, writeChan)
 import Control.Exception (bracket)
 import Control.Monad (forever)
-import Data.Foldable (toList, traverse_)
+import Data.Foldable (traverse_)
 import Data.Traversable (for)
 import qualified System.Console.ANSI as Ansi
-import qualified System.Console.ANSI.Declarative.Input.Keyboard as Keyboard
 import qualified System.Console.ANSI.Declarative.Widget as Widget
 import qualified System.IO as IO
 
 data App widget state event = App
   { update :: state -> event -> Transition state,
     view :: state -> widget,
-    useKeyboardInput :: Maybe (Keyboard.KeyboardInput -> Maybe event),
     -- | Each action will be called in its own thread repeatedly and should
     -- block until an event becomes available.
-    getAdditionalEvents :: [IO event],
+    -- See 'System.Console.ANSI.Declarative.Simple.Input'.
+    events :: [IO event],
     initialState :: state
   }
 
@@ -34,14 +33,14 @@ data Transition state
 runApp :: Widget.IsWidget widget => App widget state event -> IO state
 runApp app = do
   withTerminalState $
-    -- Only now, after setting up stdin properly, start reading input.
+    -- Only now, after setting up stdin properly, start reading events/input.
     withEventThreads app $ \eventChan ->
       run eventChan (initialState app)
   where
     run eventChan !state = do
       Widget.renderToTerminal (view app state)
-      -- Ideally, we would read multiple events at once here, but this requires
-      -- switching to a Chan that allows non-blocking reads.
+      -- Ideally, we would read multiple events at once here before re-rendering,
+      -- but this requires switching to a Chan that allows non-blocking reads.
       -- Otherwise, we get blocked after some previous events and cannot show
       -- them until another one arrives.
       event <- readChan eventChan
@@ -72,23 +71,16 @@ withTerminalState = bracket setup cleanup . const
       IO.hSetBuffering IO.stdin buffIn
       IO.hSetBuffering IO.stdout buffOut
 
--- IDEA: If we used the async package here, we coul check whether any of the
+-- IDEA: If we used the async package here, we could check whether any of the
 -- spawned threads terminated and re-raise the exception in the main thread.
 withEventThreads :: App widget state event -> (Chan event -> IO a) -> IO a
 withEventThreads app action = bracket setup cleanup (action . fst)
   where
     setup = do
       eventChan <- newChan
-      inputThread <- fmap toList $
-        for (useKeyboardInput app) $ \embed -> do
-          forkIO . forever $ do
-            input <- Keyboard.readInput
-            case embed input of
-              Just x -> writeChan eventChan x
-              Nothing -> pure ()
-      otherThreads <- for (getAdditionalEvents app) $ \getEvent ->
+      threadIds <- for (events app) $ \getEvent ->
         forkIO . forever $ getEvent >>= writeChan eventChan
-      pure (eventChan, inputThread <> otherThreads)
+      pure (eventChan, threadIds)
 
-    cleanup (_eventChan, threads) = do
-      traverse_ killThread threads
+    cleanup (_eventChan, threadIds) = do
+      traverse_ killThread threadIds

@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Messaging.Client.GTK.UI where
 
@@ -32,6 +33,7 @@ import GI.Gtk.Declarative
 import GI.Gtk.Declarative.App.Simple
 import GI.Gtk.Declarative.Container.Class (Children)
 import Lens.Micro
+import Lens.Micro.TH
 import Messaging.Client.Core.State
 import Messaging.Client.GTK.UI.MessageBox
 import qualified Messaging.Shared.Conversation as Conv
@@ -43,18 +45,30 @@ import qualified Messaging.Shared.User as User
 data Event
   = Inbound Res.Response
   | Outbound Req.Request
+  | StickMessages Bool
   | Closed
   | Ignore
 
-update :: Chan Req.Request -> State -> Event -> Transition State Event
+data UIState = UIState
+  { _cientState :: State,
+    _isSticky :: Bool
+  }
+
+makeLenses ''UIState
+
+update :: Chan Req.Request -> UIState -> Event -> Transition UIState Event
 update _ st (Inbound res) =
-  Transition (st & handleServerResponse res) (pure Nothing)
+  Transition (st & cientState %~ handleServerResponse res) (pure Nothing)
 update out st (Outbound req) =
   Transition st $ writeChan out req $> Nothing
-update _ st Ignore = Transition st (pure Nothing)
-update _ _ Closed = Exit
+update _ st (StickMessages b) =
+  Transition (st & isSticky .~ b) (pure Nothing)
+update _ st Ignore =
+  Transition st (pure Nothing)
+update _ _ Closed =
+  Exit
 
-view :: State -> AppView Window Event
+view :: UIState -> AppView Window Event
 view st =
   bin
     Window
@@ -66,12 +80,13 @@ view st =
     $ container
       Box
       [#orientation := OrientationVertical, #valign := AlignEnd]
-      [ bin ScrolledWindow [#propagateNaturalHeight := True] $ ignoreEvent <$> messageBox [classes ["message-box"]] msgs,
+      [ BoxChild defaultBoxChildProperties $ ignoreEvent <$> msgBox,
         widget Entry [onM #keyPressEvent windowKeyPressEventHandler]
       ]
   where
-    msgs = (st ^. currentHistory) & fmap renderRequest
-    ignoreEvent _ = Ignore
+    msgBox = messageBox [classes ["message-MessageBoxProps msgs Trueox"]] (MessageBoxProps msgs (st ^. isSticky))
+    msgs = (st ^. cientState . currentHistory) & fmap renderRequest
+    ignoreEvent (SrolledToBottom b) = StickMessages b
 
 renderRequest :: ConversationHistoryEntry -> Text
 renderRequest (Message user msg) =
@@ -93,5 +108,5 @@ windowKeyPressEventHandler eventKey entry = do
     Just k -> trace ("Pressed: " ++ show k) $ return (False, Ignore)
     _ -> return (False, Ignore)
 
-initialState :: State
-initialState = emptyState
+initialState :: UIState
+initialState = UIState emptyState True

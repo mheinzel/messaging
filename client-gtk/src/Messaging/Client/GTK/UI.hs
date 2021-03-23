@@ -6,7 +6,7 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Functor (void, ($>))
 import GI.Gtk (Window)
 import GI.Gtk.Declarative.App.Simple (App (..), Transition (Exit, Transition), run)
-import Lens.Micro ((&))
+import Lens.Micro ((%~), (&), (.~))
 import qualified Messaging.Client.Core.State as Core
 import Messaging.Client.GTK.View (Event (..))
 import qualified Messaging.Client.GTK.View as View
@@ -24,21 +24,18 @@ produceFromChan f chan = forever $ do
   x <- liftIO $ readChan chan
   Pipes.yield $ f x
 
-app :: Pipes.Producer Event IO () -> Chan Req.Request -> App Window Core.State Event
+app :: Pipes.Producer Event IO () -> Chan Req.Request -> App Window View.State Event
 app eventProducer outgoingChan =
   App
     { view = View.view,
       update = updateState outgoingChan,
       inputs = [eventProducer],
-      initialState = Core.emptyState
+      initialState = View.State Core.emptyState True
     }
 
-updateState :: Chan Req.Request -> Core.State -> Event -> Transition Core.State Event
-updateState _ st (Inbound res) =
-  Transition (st & Core.handleServerResponse res) (pure Nothing)
---updateState _ st (Stick b) =
---  Transition (st & historySticky .~ b) (pure Nothing)
-updateState out st (Outbound req) =
-  Transition st $ writeChan out req $> Nothing
+updateState :: Chan Req.Request -> View.State -> Event -> Transition View.State Event
+updateState _ st (Inbound res) = Transition (st & View.core %~ Core.handleServerResponse res) (pure Nothing)
+updateState out st (Outbound req) = Transition st $ writeChan out req $> Nothing
+updateState _ st (StickyMessages b) = Transition (st & View.stickyMessages .~ b) (pure Nothing)
 updateState _ st Ignore = Transition st (pure Nothing)
 updateState _ _ Closed = Exit

@@ -10,11 +10,9 @@
 module Messaging.Client.GTK.UI.MessageBox where
 
 import Control.Monad ((<=<))
-import Control.Monad.IO.Class (MonadIO)
-import Data.Text (Text, pack)
-import Data.Vector (Vector, singleton)
+import Data.Text (Text)
+import Data.Vector (Vector)
 import qualified Data.Vector as Vec
-import Debug.Trace (trace)
 import qualified GI.GObject as GI
 import GI.Gtk
   ( Align (..),
@@ -29,11 +27,11 @@ import GI.Gtk.Declarative.EventSource (Subscription, fromCancellation)
 -- Custom widget
 --
 
-newtype MessageBoxEvent = SrolledToBottom Bool
+newtype MessageBoxEvent = ScrolledToBottom Bool
 
 data MessageBoxProps = MessageBoxProps {
     messages :: Vector Text,
-    sticky :: Bool
+    stickToBottom :: Bool
   } deriving (Show, Eq)
 
 messageBox :: Vector (Attribute Gtk.ScrolledWindow MessageBoxEvent) -> MessageBoxProps -> Widget MessageBoxEvent
@@ -66,7 +64,7 @@ messageBox customAttributes customParams =
       | old == new = CustomKeep
       | Just newMsgs <- getNew (messages old) (messages new) = CustomModify $ \window -> do
         mapM_ (Gtk.containerAdd msgBox <=< toListRow) newMsgs
-        setSticky window (sticky new)
+        setSticky window (stickToBottom new)
         return msgBox
       | otherwise = CustomModify $ \window -> do
         setSticky window True
@@ -78,7 +76,7 @@ messageBox customAttributes customParams =
 
       handler <-
         Gtk.on vAdjustment #valueChanged $
-          callback . SrolledToBottom =<< do
+          callback . ScrolledToBottom =<< do
             value <- #getValue vAdjustment
             upper <- #getUpper vAdjustment
             height <- #getAllocatedHeight scrollWindow 

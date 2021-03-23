@@ -1,0 +1,14 @@
+packages: */*.cabal
+
+constraints:
+  base >= 4.15,
+  -- not yet available on Hackage :(
+  haskell-gi >= 0.25
+
+
+allow-newer:
+  cryptohash-sha1:base,
+  cryptohash-md5:base,
+  entropy:Cabal,
+  gi-gtk-declarative:haskell-gi,
+  gi-gtk-declarative-app-simple:haskell-gi

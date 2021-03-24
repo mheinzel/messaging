@@ -5,7 +5,6 @@ module Messaging.Client.Terminal.View where
 
 import Data.Foldable (toList)
 import Data.Text (Text)
-import qualified Data.Text as Text
 import qualified Messaging.Client.Core.State as Core
 import Messaging.Client.Terminal.State
 import qualified Messaging.Shared.Conversation as Conv
@@ -15,8 +14,9 @@ import qualified Prettyprinter as PP
 import qualified Prettyprinter.Render.Terminal as PP
 import qualified System.Console.ANSI.Declarative.Widget as Widget
 
--- This allows aligning the last few arguments of a function nicely without the
--- formatter trying to also align the first arguments.
+-- This allows aligning the last few arguments of a function nicely without
+-- having to add parentheses (or the ormolu formatter trying to also align the
+-- first arguments).
 -- Maybe there's a better way to keep things nice.
 (|>) :: (a -> b) -> a -> b
 (|>) = ($)
@@ -80,8 +80,6 @@ viewConversationList convs =
         <> pure ""
         <> pure "(just a mockup)"
 
--------------------------------------------------------------------------------
-
 viewMainWindow :: Widget.BorderCharacters -> State -> Widget.Split
 viewMainWindow borderChars state =
   Widget.splitBottom 5
@@ -101,8 +99,6 @@ viewHistory history =
   Widget.alignBottom . Widget.prettyBlock $
     PP.vsep $
       renderHistoryEntry <$> toList (Core._historyEntries history)
-
--------------------------------------------------------------------------------
 
 renderHistoryEntry :: Core.ConversationHistoryEntry -> PP.Doc PP.AnsiStyle
 renderHistoryEntry (Core.Message sender msg) =

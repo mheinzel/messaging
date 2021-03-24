@@ -7,7 +7,6 @@
 module Messaging.Client.GTK.View where
 
 import Data.Text as Text
-import Debug.Trace (trace) -- TODO: get rid of this
 import GI.Gdk (EventKey, getEventKeyString)
 import GI.Gtk
   ( Align (..),
@@ -17,7 +16,6 @@ import GI.Gtk
     ListBox (..),
     ListBoxRow (..),
     Orientation (..),
-    ScrolledWindow (..),
     Window (..),
     entryGetText,
     entrySetText,
@@ -92,11 +90,10 @@ windowKeyPressEventHandler eventKey entry = do
     Just "\r" -> do
       msg <- entryGetText entry
       entrySetText entry ""
-      
+
       -- Don't sent empty messages
       if Text.null msg
-        then return (True, Ignore) 
+        then return (True, Ignore)
         else return (True, Outbound $ Req.SendMessage $ Msg.Message Conv.conversationNameGeneral msg)
-        
-    Just k -> return (False, Ignore)
+    Just _ -> return (False, Ignore)
     _ -> return (False, Ignore)

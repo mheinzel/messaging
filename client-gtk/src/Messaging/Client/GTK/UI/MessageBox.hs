@@ -29,10 +29,11 @@ import GI.Gtk.Declarative.EventSource (Subscription, fromCancellation)
 
 newtype MessageBoxEvent = ScrolledToBottom Bool
 
-data MessageBoxProps = MessageBoxProps {
-    messages :: Vector Text,
+data MessageBoxProps = MessageBoxProps
+  { messages :: Vector Text,
     stickToBottom :: Bool
-  } deriving (Show, Eq)
+  }
+  deriving (Show, Eq)
 
 messageBox :: Vector (Attribute Gtk.ScrolledWindow MessageBoxEvent) -> MessageBoxProps -> Widget MessageBoxEvent
 messageBox customAttributes customParams =
@@ -79,7 +80,7 @@ messageBox customAttributes customParams =
           callback . ScrolledToBottom =<< do
             value <- #getValue vAdjustment
             upper <- #getUpper vAdjustment
-            height <- #getAllocatedHeight scrollWindow 
+            height <- #getAllocatedHeight scrollWindow
             return $ fromIntegral height == (upper - value)
 
       return (fromCancellation (GI.signalHandlerDisconnect vAdjustment handler))
@@ -104,5 +105,5 @@ setSticky :: ScrolledWindow -> Bool -> IO ()
 setSticky _ False = pure ()
 setSticky window _ = do
   vAdjustment <- #getVadjustment window
-  upper <- #getUpper vAdjustment 
+  upper <- #getUpper vAdjustment
   #clampPage vAdjustment upper (upper + 10)

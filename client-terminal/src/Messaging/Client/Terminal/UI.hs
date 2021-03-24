@@ -11,6 +11,7 @@ import Lens.Micro (over)
 import qualified Messaging.Client.Core.State as Core
 import Messaging.Client.Terminal.State
 import Messaging.Client.Terminal.View (viewState)
+import qualified Messaging.Shared.Conversation as Conv
 import qualified Messaging.Shared.Message as Msg
 import qualified Messaging.Shared.Request as Req
 import qualified Messaging.Shared.Response as Res
@@ -59,6 +60,23 @@ handleEvent outgoingChan state = \case
         pure $ resetEditor $ toggleSidebar state
       Just CmdUnicode -> Simple.Transition $ do
         pure $ resetEditor $ toggleUnicode state
+      Just (CmdJoin conv) -> Simple.Transition $ do
+        let convName = Conv.ConversationName conv
+        if hasJoined convName state then
+          pure $ resetEditor state
+        else do
+          writeChan outgoingChan $ Req.JoinConversation convName
+          pure $ resetEditor $ addConversation convName state
+      Just (CmdLeave conv) -> Simple.Transition $ do
+        let convName = Conv.ConversationName conv
+        if hasJoined convName state then do
+          writeChan outgoingChan (Req.LeaveConversation convName)
+          pure $ resetEditor $ removeConversation convName state
+        else
+          pure $ resetEditor state
+      Just (CmdSwitch conv) -> Simple.Transition $ do
+        let convName = Conv.ConversationName conv
+        pure $ resetEditor $ setConversation convName state
       Just (CmdSend txt) -> Simple.Transition $ do
         let convName = currentConversationName state
         let msg = Msg.Message convName txt
@@ -74,6 +92,12 @@ data Command
   = CmdQuit
   | CmdSidebar
   | CmdUnicode
+  | -- | Join a conversation
+    CmdJoin Text
+  | -- | Leave a conversation
+    CmdLeave Text
+  | -- | Switch to a conversation
+    CmdSwitch Text
   | CmdSend Text
 
 typedCommand :: State -> Maybe Command
@@ -84,9 +108,13 @@ typedCommand = command . Text.strip . Text.unlines . editorContent
       | Text.isPrefixOf "/" txt = findCommand txt
       | otherwise = Just (CmdSend txt)
 
+    -- TODO: parse command arguments
     findCommand txt =
       fmap snd . List.find (flip Text.isPrefixOf txt . fst) $
         [ ("/quit", CmdQuit),
           ("/sidebar", CmdSidebar),
-          ("/unicode", CmdUnicode)
+          ("/unicode", CmdUnicode),
+          ("/join", CmdJoin "memes"),
+          ("/leave", CmdLeave "memes"),
+          ("/switch", CmdSwitch "memes")
         ]

@@ -53,7 +53,7 @@ view st =
     Window
     [ #title := "Title",
       #widthRequest := 800,
-      #heightRequest := 600,
+--      #heightRequest := 600,
       on #deleteEvent (const (True, Closed))
     ]
     $ container
@@ -63,7 +63,7 @@ view st =
         widget Entry [onM #keyPressEvent windowKeyPressEventHandler]
       ]
   where
-    msgBox = messageBox [] (MessageBoxProps msgs (st ^. stickyMessages))
+    msgBox = messageBox [] (MessageBoxProps msgs (st ^. stickyMessages) 600)
     msgs = fmap renderHistoryEntry (st ^. core . Core.currentHistory)
     mapMsgBoxEvents ~(ScrolledToBottom b) = StickyMessages b
 

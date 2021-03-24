@@ -82,10 +82,12 @@ messageBox customAttributes customParams =
 toListRow :: Text -> IO Gtk.ListBoxRow
 toListRow msg = do
   listBoxRow <- Gtk.new Gtk.ListBoxRow []
-  lbl <- Gtk.new Gtk.Label [#label Gtk.:= msg]
-  Gtk.containerAdd listBoxRow lbl
+  label <- Gtk.new Gtk.Label [#label Gtk.:= msg]
+  Gtk.setLabelWrap label True
+  #setXalign label 0.0
+  Gtk.containerAdd listBoxRow label
   Gtk.widgetShow listBoxRow
-  Gtk.widgetShow lbl
+  Gtk.widgetShow label
   return listBoxRow
 
 getNew :: (Eq a) => Vector a -> Vector a -> Maybe (Vector a)

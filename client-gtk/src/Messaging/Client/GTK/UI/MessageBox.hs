@@ -1,12 +1,10 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedLabels #-}
-{-# LANGUAGE StrictData #-}
 
 module Messaging.Client.GTK.UI.MessageBox where
 
 import Control.Monad ((<=<))
 import Data.Foldable (fold)
-import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import Data.Text (Text)
 import Data.Vector (Vector)
 import qualified Data.Vector as Vec
@@ -20,37 +18,33 @@ import qualified GI.Gtk as Gtk
 import GI.Gtk.Declarative
 import GI.Gtk.Declarative.EventSource (Subscription, fromCancellation)
 
-newtype MessageBoxProps = MessageBoxProps
-  { messages :: Vector Text
+--
+-- Custom widget
+--
+
+newtype MessageBoxEvent = ScrolledToBottom Bool
+
+data MessageBoxProps = MessageBoxProps
+  { messages :: Vector Text,
+    stickToBottom :: Bool
   }
   deriving (Show, Eq)
 
-data InternalState = InternalState
-  { childListBox :: ListBox,
-    stickToBottom :: IORef Bool
-  }
-
-messageBox :: Vector (Attribute Gtk.ScrolledWindow e) -> MessageBoxProps -> Widget e
+messageBox :: Vector (Attribute Gtk.ScrolledWindow MessageBoxEvent) -> MessageBoxProps -> Widget MessageBoxEvent
 messageBox customAttributes customParams =
-  Widget $ customMessageBox customAttributes customParams
-
-customMessageBox ::
-  Vector (Attribute Gtk.ScrolledWindow e) ->
-  MessageBoxProps ->
-  CustomWidget Gtk.ScrolledWindow MessageBoxProps InternalState e
-customMessageBox customAttributes customParams =
-  CustomWidget
-    { customWidget,
-      customCreate,
-      customPatch,
-      customSubscribe,
-      customAttributes,
-      customParams
-    }
+  Widget $
+    CustomWidget
+      { customWidget,
+        customCreate,
+        customPatch,
+        customSubscribe,
+        customAttributes,
+        customParams
+      }
   where
     customWidget = Gtk.ScrolledWindow
 
-    customCreate :: MessageBoxProps -> IO (ScrolledWindow, InternalState)
+    customCreate :: MessageBoxProps -> IO (ScrolledWindow, ListBox)
     customCreate props = do
       window <- Gtk.new Gtk.ScrolledWindow [#propagateNaturalHeight Gtk.:= True]
       msgBox <- Gtk.new Gtk.ListBox [#valign Gtk.:= AlignEnd]
@@ -59,32 +53,30 @@ customMessageBox customAttributes customParams =
       listRows <- mapM toListRow $ messages props
       mapM_ (Gtk.containerAdd msgBox) listRows
 
-      stick <- newIORef True
-      let internalState = InternalState msgBox stick
+      return (window, msgBox)
 
-      return (window, internalState)
-
-    customPatch :: MessageBoxProps -> MessageBoxProps -> InternalState -> CustomPatch ScrolledWindow InternalState
-    customPatch old new internal
+    customPatch :: MessageBoxProps -> MessageBoxProps -> ListBox -> CustomPatch ScrolledWindow ListBox
+    customPatch old new msgBox
       | Just newMsgs <- getNew (messages old) (messages new) = CustomModify $ \_ -> do
-        mapM_ (Gtk.containerAdd (childListBox internal) <=< toListRow) newMsgs
-        return internal
+        mapM_ (Gtk.containerAdd msgBox <=< toListRow) newMsgs
+        return msgBox
       | otherwise = CustomKeep
 
-    customSubscribe :: MessageBoxProps -> InternalState -> ScrolledWindow -> (e -> IO ()) -> IO Subscription
-    customSubscribe _ internal scrollWindow _ = do
+    customSubscribe :: MessageBoxProps -> ListBox -> ScrolledWindow -> (MessageBoxEvent -> IO ()) -> IO Subscription
+    customSubscribe props _ scrollWindow callback = do
       vAdjustment <- #getVadjustment scrollWindow
-      -- Do not send events, just update internal state and scroll to bottom if necessary.
+
       fold
         [ fromCancellation . GI.signalHandlerDisconnect vAdjustment <$> do
             Gtk.on vAdjustment #valueChanged $ do
               value <- #getValue vAdjustment
               upper <- #getUpper vAdjustment
               height <- #getAllocatedHeight scrollWindow
-              writeIORef (stickToBottom internal) $ fromIntegral height == (upper - value),
+              callback $ ScrolledToBottom $ fromIntegral height == (upper - value),
           fromCancellation . GI.signalHandlerDisconnect scrollWindow <$> do
             Gtk.after scrollWindow #sizeAllocate $ \_ ->
-              setSticky scrollWindow =<< readIORef (stickToBottom internal)
+              -- Do not send an event, just stick to the bottom if necessary.
+              setSticky scrollWindow (stickToBottom props)
         ]
 
 toListRow :: Text -> IO Gtk.ListBoxRow

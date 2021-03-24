@@ -76,9 +76,7 @@ cleanUpConnection user _conn = do
   -- to be cleaned up elsewhere.
   Auth.freeUserName $ userName user
 
-  -- Later, we'll have to fetch a list of conversations the user is part of.
-  let convName = conversationNameGeneral
-  Conv.removeFromConversation user convName
+  Conv.removeFromAllConversations user
 
 handleConnection :: User -> WS.Connection -> App ()
 handleConnection user conn = do

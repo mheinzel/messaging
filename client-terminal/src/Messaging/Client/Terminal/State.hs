@@ -42,5 +42,24 @@ toggleSidebar = over sidebarExpanded not
 toggleUnicode :: State -> State
 toggleUnicode = over unicodeEnabled not
 
+overJoinedConversations ::
+  (Conv.ConversationName -> Core.State -> Core.State) ->
+  Conv.ConversationName ->
+  State ->
+  State
+overJoinedConversations f name = over coreState (f name)
+
+setConversation :: Conv.ConversationName -> State -> State
+setConversation = overJoinedConversations Core.setConversation
+
+addConversation :: Conv.ConversationName -> State -> State
+addConversation = overJoinedConversations Core.addConversation
+
+removeConversation :: Conv.ConversationName -> State -> State
+removeConversation = overJoinedConversations Core.removeConversation
+
+hasJoined :: Conv.ConversationName -> State -> Bool
+hasJoined name = Core.hasJoined name . _coreState
+
 initialState :: State
 initialState = State Core.emptyState (Widget.editor "") True False

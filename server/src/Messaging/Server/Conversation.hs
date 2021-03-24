@@ -3,11 +3,12 @@
 module Messaging.Server.Conversation
   ( addToConversation,
     removeFromConversation,
+    removeFromAllConversations,
     broadcastMessage,
   )
 where
 
-import Control.Concurrent.STM (atomically, modifyTVar, readTVarIO)
+import Control.Concurrent.STM (atomically, modifyTVar, readTVar, readTVarIO)
 import Control.Monad.Reader.Class (asks)
 import Control.Monad.Trans (MonadIO (liftIO))
 import Data.Foldable (toList)
@@ -45,14 +46,20 @@ removeFromConversation user convName = do
   liftIO $
     atomically $ do
       -- remove conversation if now empty
-      modifyTVar convs (Map.update removeUser convName)
+      modifyTVar convs (Map.update (removeUser user) convName)
   where
-    removeUser :: Conversation -> Maybe Conversation
-    removeUser old =
-      let newMembers = Set.delete (userID user) (conversationMembers old)
+    removeUser :: User -> Conversation -> Maybe Conversation
+    removeUser u old =
+      let newMembers = Set.delete (userID u) (conversationMembers old)
        in if Set.null newMembers
             then Nothing
             else Just (old {conversationMembers = newMembers})
+
+removeFromAllConversations :: User -> App ()
+removeFromAllConversations user = do
+  tConvs <- asks activeConversations
+  convs <- liftIO $ atomically $ readTVar tConvs
+  mapM_ (removeFromConversation user) (Map.keys convs)
 
 broadcastMessage :: User -> Message -> App ()
 broadcastMessage user msg =

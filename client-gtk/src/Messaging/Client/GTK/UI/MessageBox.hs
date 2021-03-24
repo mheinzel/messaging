@@ -1,15 +1,10 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedLabels #-}
-{-# LANGUAGE OverloadedLists #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 module Messaging.Client.GTK.UI.MessageBox where
 
 import Control.Monad ((<=<))
+import Data.Foldable (fold)
 import Data.Text (Text)
 import Data.Vector (Vector)
 import qualified Data.Vector as Vec
@@ -62,28 +57,27 @@ messageBox customAttributes customParams =
 
     customPatch :: MessageBoxProps -> MessageBoxProps -> ListBox -> CustomPatch ScrolledWindow ListBox
     customPatch old new msgBox
-      | old == new = CustomKeep
-      | Just newMsgs <- getNew (messages old) (messages new) = CustomModify $ \window -> do
+      | Just newMsgs <- getNew (messages old) (messages new) = CustomModify $ \_ -> do
         mapM_ (Gtk.containerAdd msgBox <=< toListRow) newMsgs
-        setSticky window (stickToBottom new)
         return msgBox
-      | otherwise = CustomModify $ \window -> do
-        setSticky window True
-        return msgBox
+      | otherwise = CustomKeep
 
     customSubscribe :: MessageBoxProps -> ListBox -> ScrolledWindow -> (MessageBoxEvent -> IO ()) -> IO Subscription
-    customSubscribe _ _ scrollWindow callback = do
+    customSubscribe props _ scrollWindow callback = do
       vAdjustment <- #getVadjustment scrollWindow
 
-      handler <-
-        Gtk.on vAdjustment #valueChanged $
-          callback . ScrolledToBottom =<< do
-            value <- #getValue vAdjustment
-            upper <- #getUpper vAdjustment
-            height <- #getAllocatedHeight scrollWindow
-            return $ fromIntegral height == (upper - value)
-
-      return (fromCancellation (GI.signalHandlerDisconnect vAdjustment handler))
+      fold
+        [ fromCancellation . GI.signalHandlerDisconnect vAdjustment <$> do
+            Gtk.on vAdjustment #valueChanged $ do
+              value <- #getValue vAdjustment
+              upper <- #getUpper vAdjustment
+              height <- #getAllocatedHeight scrollWindow
+              callback $ ScrolledToBottom $ fromIntegral height == (upper - value),
+          fromCancellation . GI.signalHandlerDisconnect scrollWindow <$> do
+            Gtk.after scrollWindow #sizeAllocate $ \_ ->
+              -- Do not send an event, just stick to the bottom if necessary.
+              setSticky scrollWindow (stickToBottom props)
+        ]
 
 toListRow :: Text -> IO Gtk.ListBoxRow
 toListRow msg = do
@@ -106,4 +100,4 @@ setSticky _ False = pure ()
 setSticky window _ = do
   vAdjustment <- #getVadjustment window
   upper <- #getUpper vAdjustment
-  #clampPage vAdjustment upper (upper + 10)
+  #clampPage vAdjustment upper upper

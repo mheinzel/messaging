@@ -2,13 +2,14 @@ packages: */*.cabal
 
 constraints:
   base >= 4.15,
-  -- not yet available on Hackage :(
+  -- https://github.com/haskell-gi/haskell-gi/commit/15d6b30ce4409229f34f53a93e29705f52322394
   haskell-gi >= 0.25
-
 
 allow-newer:
   cryptohash-sha1:base,
   cryptohash-md5:base,
   entropy:Cabal,
   gi-gtk-declarative:haskell-gi,
-  gi-gtk-declarative-app-simple:haskell-gi
+  gi-gtk-declarative:haskell-gi-base,
+  gi-gtk-declarative-app-simple:haskell-gi,
+  gi-gtk-declarative-app-simple:haskell-gi-base

@@ -12,6 +12,7 @@ import Data.ByteString (ByteString)
 import Data.Maybe (fromMaybe)
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text
+import qualified Messaging.Shared.Auth as Auth
 import qualified Messaging.Shared.Request as Req
 import qualified Messaging.Shared.Response as Res
 import qualified Messaging.Shared.User as User
@@ -56,7 +57,7 @@ runClientApp URI {uriHost, uriPort, uriPath} userName client = do
   let port = URI.portNumber uriPort
   let path = Text.unpack . Text.decodeUtf8 $ uriPath
   let options = WS.defaultConnectionOptions
-  let headers = [("UserName", Text.encodeUtf8 (User.userNameText userName))]
+  let headers = Auth.authenticationHeaders userName
 
   withSocketsDo $
     WS.runClientWith host port path options headers client

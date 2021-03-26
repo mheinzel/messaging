@@ -17,7 +17,6 @@ import GI.Gtk
 import qualified GI.Gtk as Gtk
 import GI.Gtk.Declarative
 import GI.Gtk.Declarative.EventSource (Subscription, fromCancellation)
-import GHC.Int (Int32)
 
 --
 -- Custom widget
@@ -27,8 +26,7 @@ newtype MessageBoxEvent = ScrolledToBottom Bool
 
 data MessageBoxProps = MessageBoxProps
   { messages :: Vector Text,
-    stickToBottom :: Bool,
-    height :: Int32
+    stickToBottom :: Bool
   }
   deriving (Show, Eq)
 
@@ -48,7 +46,7 @@ messageBox customAttributes customParams =
 
     customCreate :: MessageBoxProps -> IO (ScrolledWindow, ListBox)
     customCreate props = do
-      window <- Gtk.new Gtk.ScrolledWindow [#propagateNaturalHeight Gtk.:= True, #heightRequest Gtk.:= height props]
+      window <- Gtk.new Gtk.ScrolledWindow [#propagateNaturalHeight Gtk.:= True]
       msgBox <- Gtk.new Gtk.ListBox [#valign Gtk.:= AlignEnd]
       Gtk.containerAdd window msgBox
 

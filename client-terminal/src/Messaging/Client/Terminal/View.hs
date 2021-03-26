@@ -1,10 +1,12 @@
-{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Messaging.Client.Terminal.View where
 
+import qualified Data.Char as Char
 import Data.Foldable (toList)
+import Data.Function (on)
 import Data.Text (Text)
+import qualified Data.Text as Text
 import qualified Messaging.Client.Core.State as Core
 import Messaging.Client.Terminal.State
 import qualified Messaging.Shared.Conversation as Conv
@@ -102,7 +104,9 @@ viewHistory history =
 
 renderHistoryEntry :: Core.ConversationHistoryEntry -> PP.Doc PP.AnsiStyle
 renderHistoryEntry (Core.Message sender msg) =
-  renderUserName sender <> ":" <+> PP.pretty msg
+  (renderUserName sender <> ":")
+    -- Allow wrapping text at each beginning and end of whitespace
+    <+> PP.fillCat (PP.pretty <$> Text.groupBy ((==) `on` Char.isSpace) msg)
 renderHistoryEntry (Core.UserJoined user) =
   renderSystemMessage (User.userNameText user <> " joined")
 renderHistoryEntry (Core.UserLeft user) =

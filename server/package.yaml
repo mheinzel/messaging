@@ -31,7 +31,6 @@ dependencies:
 - unliftio
 - uuid
 - websockets
-- bytestring
 
 ghc-options:
 - -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wpartial-fields -Wredundant-constraints
@@ -57,8 +56,9 @@ tests:
     source-dirs: test
     dependencies:
     - base
-    - messaging-server
-    - messaging-client-core
-    - messaging-shared
     - hspec
+    - HUnit
+    - messaging-client-core
+    - messaging-server
+    - messaging-shared
     - say

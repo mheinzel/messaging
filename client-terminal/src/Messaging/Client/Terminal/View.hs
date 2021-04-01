@@ -56,7 +56,7 @@ viewSideBar borderChars state =
             |> do
               Widget.padding (Widget.padTop 1) $
                 viewConversationList
-                  [Core._conversationName $ Core._currentConversation state]
+                  [fst $ Core._currentConversation state]
             |> do
               viewInstructions
 
@@ -87,7 +87,7 @@ viewMainWindow borderChars state =
   Widget.splitBottom 5
     |> do
       Widget.padding (Widget.padLeft 1 <> Widget.padRight 1) $
-        viewConversation (Core._currentConversation $ _coreState state)
+        viewConversation (snd $ Core._currentConversation $ _coreState state)
     |> do
       Widget.border borderChars $
         _editor state
@@ -100,7 +100,7 @@ viewHistory :: Core.ConversationHistory -> Widget.Block
 viewHistory history =
   Widget.alignBottom . Widget.prettyBlock $
     PP.vsep $
-      renderHistoryEntry <$> toList (Core._historyEntries history)
+      renderHistoryEntry <$> toList (Core.getHistoryEntries history)
 
 renderHistoryEntry :: Core.ConversationHistoryEntry -> PP.Doc PP.AnsiStyle
 renderHistoryEntry (Core.Message sender msg) =
@@ -111,6 +111,8 @@ renderHistoryEntry (Core.UserJoined user) =
   renderSystemMessage (User.userNameText user <> " joined")
 renderHistoryEntry (Core.UserLeft user) =
   renderSystemMessage (User.userNameText user <> " left")
+renderHistoryEntry (Core.NewMessages amount) =
+  renderSystemMessage $ Text.pack (show amount) <> " New messages"
 
 renderSystemMessage :: Text -> PP.Doc PP.AnsiStyle
 renderSystemMessage =

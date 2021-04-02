@@ -54,7 +54,7 @@ withAcceptedConnection pending action =
           (cleanUpConnection user)
           (action user)
   where
-    rejection :: Auth.AuthError -> WS.RejectRequest
+    rejection :: Auth.Error -> WS.RejectRequest
     rejection err =
       WS.defaultRejectRequest
         { WS.rejectMessage = case err of

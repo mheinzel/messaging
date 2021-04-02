@@ -3,45 +3,33 @@
 
 -- | Module header
 module Messaging.Server.Auth
-  ( AuthError (..),
+  ( Auth.Error (..),
     authenticate,
     freeUserName,
   )
 where
 
 import Control.Concurrent.STM (atomically, modifyTVar, readTVar)
-import Control.Monad ((<=<))
 import Control.Monad.Reader.Class (asks)
 import Control.Monad.Trans (liftIO)
 import qualified Data.Set as S (delete, insert, member)
-import qualified Data.Text.Encoding as Text (decodeUtf8')
 import qualified Data.UUID.V4 as UUID
 import Messaging.Server.App (App, takenUserNames)
-import Messaging.Shared.User (User (User), UserID (UserID), UserName, mkUserName)
+import Messaging.Shared.Auth as Auth
+import Messaging.Shared.User (User (User), UserID (UserID), UserName)
 import qualified Network.WebSockets as WS
 
-data AuthError
-  = MissingUserName
-  | InvalidUserName
-  | UserNameTaken
-  deriving (Show)
-
-authenticate :: WS.RequestHead -> App (Either AuthError User)
+authenticate :: WS.RequestHead -> App (Either Auth.Error User)
 authenticate req =
-  case parseUserName req of
+  case Auth.parseHeaders (WS.requestHeaders req) of
     Left err -> pure (Left err)
     Right name ->
       claimUserName name >>= \case
         AlreadyTaken -> do
-          pure $ Left UserNameTaken
+          pure $ Left Auth.UserNameTaken
         SuccessfullyClaimed -> do
           userID <- UserID <$> liftIO UUID.nextRandom
           pure $ Right (User userID name)
-  where
-    parseUserName =
-      addError InvalidUserName . mkUserName
-        <=< replaceError InvalidUserName . Text.decodeUtf8' -- drop error message
-        <=< addError MissingUserName . lookup "UserName" . WS.requestHeaders
 
 data ClaimResult = SuccessfullyClaimed | AlreadyTaken
 
@@ -63,9 +51,3 @@ freeUserName name = do
   liftIO $
     atomically $ do
       modifyTVar takenNames $ S.delete name
-
-addError :: e -> Maybe a -> Either e a
-addError err = maybe (Left err) Right
-
-replaceError :: e2 -> Either e1 a -> Either e2 a
-replaceError err = either (const (Left err)) Right

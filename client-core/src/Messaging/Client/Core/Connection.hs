@@ -57,7 +57,7 @@ runClientApp URI {uriHost, uriPort, uriPath} userName client = do
   let port = URI.portNumber uriPort
   let path = Text.unpack . Text.decodeUtf8 $ uriPath
   let options = WS.defaultConnectionOptions
-  let headers = Auth.authenticationHeaders userName
+  let headers = Auth.buildHeaders userName
 
   withSocketsDo $
     WS.runClientWith host port path options headers client

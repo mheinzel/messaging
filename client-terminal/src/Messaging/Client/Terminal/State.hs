@@ -24,7 +24,8 @@ makeLenses ''State
 
 currentConversationName :: State -> Conv.ConversationName
 currentConversationName =
-  Core._conversationName . Core._currentConversation . _coreState
+  -- For now, until we support multiple conversations
+  const Conv.conversationNameGeneral
 
 handleEditorInput :: Ansi.KeyboardInput -> State -> State
 handleEditorInput input = over editor (Widget.handleInput input)

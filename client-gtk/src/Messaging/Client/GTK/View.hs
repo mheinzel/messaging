@@ -6,6 +6,7 @@
 
 module Messaging.Client.GTK.View where
 
+import Data.Maybe (fromMaybe)
 import Data.Text as Text
 import GI.Gdk (EventKey, getEventKeyString)
 import GI.Gtk
@@ -66,13 +67,13 @@ view st =
       ]
   where
     msgBox = messageBox [] (MessageBoxProps msgs (st ^. stickyMessages))
-    msgs = fmap renderHistoryEntry (st ^. core . Core.currentHistory)
+    msgs = fmap renderHistoryEntry (fromMaybe mempty $ Core.history Conv.conversationNameGeneral $ st ^. core)
     mapMsgBoxEvents ~(ScrolledToBottom b) = StickyMessages b
 
 viewHistory :: FromWidget (Container ListBox (Children (Bin ListBoxRow))) target => State -> target event
 viewHistory st =
   container ListBox [#valign := AlignEnd] $
-    (st ^. core . Core.currentHistory) <&> \req ->
+    (fromMaybe mempty $ Core.history Conv.conversationNameGeneral $ st ^. core) <&> \req ->
       bin ListBoxRow [#activatable := False, #selectable := False] $
         widget Label [#label := renderHistoryEntry req]
 

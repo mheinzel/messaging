@@ -55,8 +55,8 @@ viewSideBar borderChars state =
           Widget.splitBottom 10
             |> do
               Widget.padding (Widget.padTop 1) $
-                viewConversationList
-                  [Core._conversationName $ Core._currentConversation state]
+                viewConversationList $
+                  Core._conversationName <$> Core._joinedConversations state
             |> do
               viewInstructions
 
@@ -87,7 +87,10 @@ viewMainWindow borderChars state =
   Widget.splitBottom 5
     |> do
       Widget.padding (Widget.padLeft 1 <> Widget.padRight 1) $
-        viewConversation (Core._currentConversation $ _coreState state)
+        maybe
+          (Widget.block "")
+          viewConversation
+          (Core.conversationState (currentConversationName state) (_coreState state))
     |> do
       Widget.border borderChars $
         _editor state

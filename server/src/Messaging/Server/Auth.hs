@@ -24,14 +24,16 @@ data AuthError
   = MissingUserName
   | InvalidUserName
   | UserNameTaken
+  deriving (Show)
 
-authenticate :: WS.PendingConnection -> App (Either AuthError User)
-authenticate pending =
-  case parseUserName pending of
+authenticate :: WS.RequestHead -> App (Either AuthError User)
+authenticate req =
+  case parseUserName req of
     Left err -> pure (Left err)
     Right name ->
       claimUserName name >>= \case
-        AlreadyTaken -> pure $ Left UserNameTaken
+        AlreadyTaken -> do
+          pure $ Left UserNameTaken
         SuccessfullyClaimed -> do
           userID <- UserID <$> liftIO UUID.nextRandom
           pure $ Right (User userID name)
@@ -39,7 +41,7 @@ authenticate pending =
     parseUserName =
       addError InvalidUserName . mkUserName
         <=< replaceError InvalidUserName . Text.decodeUtf8' -- drop error message
-        <=< addError MissingUserName . lookup "UserName" . WS.requestHeaders . WS.pendingRequest
+        <=< addError MissingUserName . lookup "UserName" . WS.requestHeaders
 
 data ClaimResult = SuccessfullyClaimed | AlreadyTaken
 

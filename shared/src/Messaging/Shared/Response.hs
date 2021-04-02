@@ -8,12 +8,16 @@ module Messaging.Shared.Response
     DeserializeError (..),
     deserialize,
     serialize,
+    serializeToText,
   )
 where
 
 import qualified Data.Aeson as Aeson
+import qualified Data.Aeson.Text as Aeson (encodeToLazyText)
 import Data.Bifunctor (first)
 import Data.ByteString.Lazy (ByteString)
+import Data.Text (Text)
+import qualified Data.Text.Lazy as Text.Lazy
 import GHC.Generics (Generic)
 import Messaging.Shared.Conversation (ConversationName)
 import Messaging.Shared.Message (Message)
@@ -35,6 +39,9 @@ data DeserializeError = DeserializeError
 
 serialize :: Response -> ByteString
 serialize = Aeson.encode
+
+serializeToText :: Response -> Text
+serializeToText = Text.Lazy.toStrict . Aeson.encodeToLazyText
 
 deserialize :: ByteString -> Either DeserializeError Response
 deserialize input = first (DeserializeError input) $ Aeson.eitherDecode input

@@ -3,61 +3,74 @@
 
 module Messaging.Server where
 
-import qualified Control.Exception.Safe as Exc
 import Control.Monad (forever)
+import qualified Control.Monad.Logger as Log (LogLevel (LevelDebug))
 import Control.Monad.Trans (MonadIO (liftIO))
-import Messaging.Server.App (State, initialState, runApp)
+import Messaging.Server.App (App, Settings (..), initialState, runApp)
 import qualified Messaging.Server.Auth as Auth
 import qualified Messaging.Server.Conversation as Conv
 import qualified Messaging.Server.Delivery as Delivery
+import qualified Messaging.Server.Log as Log
 import Messaging.Shared.Conversation (conversationNameGeneral)
 import qualified Messaging.Shared.Request as Req
-import Messaging.Shared.User (User (userID, userName), UserID)
+import Messaging.Shared.User (User (userID, userName), UserID, UserName (userNameText))
 import qualified Network.WebSockets as WS
+import qualified UnliftIO
+import qualified UnliftIO.Exception as Exc
 
 runServer :: IO ()
 runServer = do
-  -- TODO: read from command line args
   state <- initialState
-  WS.runServer "127.0.0.1" 8080 (app state)
+  -- TODO: read from command line args
+  let port = 8080
+  let logging = Log.Settings Log.LoggingStderr Log.LevelDebug
+  let settings = Settings port logging
+  runApp settings state $ do
+    Log.info $ "running on port " <> show (serverPort settings)
+  WS.runServer "127.0.0.1" port $ \pending -> do
+    runApp settings state (app pending)
 
-app :: State -> WS.ServerApp
-app state pending = do
-  withAcceptedConnection state pending $ \user conn ->
-    WS.withPingThread conn 30 (return ()) $ do
-      handleConnection state user conn
+app :: WS.PendingConnection -> App ()
+app pending = do
+  withAcceptedConnection pending $ \user conn ->
+    -- withPingThread expects an `IO ()`, but we want to run in `App`.
+    UnliftIO.withRunInIO $ \runInIO ->
+      WS.withPingThread conn 30 (return ()) . runInIO $
+        handleConnection user conn
 
-withAcceptedConnection :: State -> WS.PendingConnection -> (User -> WS.Connection -> IO ()) -> IO ()
-withAcceptedConnection state pending action =
-  runApp state (Auth.authenticate pending) >>= \case
-    Left Auth.MissingUserName ->
-      WS.rejectRequest pending "No UserName provided"
-    Left Auth.InvalidUserName ->
-      WS.rejectRequest pending "Invalid Username"
-    Left Auth.UserNameTaken ->
-      WS.rejectRequest pending "UserName taken"
-    Right user ->
-      logExceptions $
+withAcceptedConnection :: WS.PendingConnection -> (User -> WS.Connection -> App ()) -> App ()
+withAcceptedConnection pending action =
+  Auth.authenticate (WS.pendingRequest pending) >>= \case
+    Left err -> do
+      Log.info $ "authentication failure: " <> show err
+      liftIO $ WS.rejectRequestWith pending (rejection err)
+    Right user -> do
+      Log.debug $ "authenticated: " <> userNameText (userName user)
+      Log.logExceptions $
         Exc.bracket
-          (acceptConnection state (userID user) pending)
+          (acceptConnection (userID user) pending)
           -- TODO: we shouldn't do a bunch of IO in the cleanup part of 'bracket'.
           -- Catch exceptions manually or use some async work queue?
-          (cleanUpConnection state user)
+          (cleanUpConnection user)
           (action user)
   where
-    -- for debugging
-    logExceptions :: IO a -> IO a
-    logExceptions = flip Exc.withException $ \e ->
-      putStrLn $ "exception: " <> show (e :: Exc.SomeException)
+    rejection :: Auth.AuthError -> WS.RejectRequest
+    rejection err =
+      WS.defaultRejectRequest
+        { WS.rejectMessage = case err of
+            Auth.MissingUserName -> "No UserName provided"
+            Auth.InvalidUserName -> "Invalid Username"
+            Auth.UserNameTaken -> "UserName taken"
+        }
 
-acceptConnection :: State -> UserID -> WS.PendingConnection -> IO WS.Connection
-acceptConnection state uID pending = do
-  conn <- WS.acceptRequest pending
-  runApp state $ Delivery.addConnection uID conn
+acceptConnection :: UserID -> WS.PendingConnection -> App WS.Connection
+acceptConnection uID pending = do
+  conn <- liftIO $ WS.acceptRequest pending
+  Delivery.addConnection uID conn
   pure conn
 
-cleanUpConnection :: State -> User -> WS.Connection -> IO ()
-cleanUpConnection state user _conn = runApp state $ do
+cleanUpConnection :: User -> WS.Connection -> App ()
+cleanUpConnection user _conn = do
   Delivery.removeConnection $ userID user
 
   -- Later the user name won't be tied to the connection anymore and will have
@@ -68,8 +81,8 @@ cleanUpConnection state user _conn = runApp state $ do
   let convName = conversationNameGeneral
   Conv.removeFromConversation user convName
 
-handleConnection :: State -> User -> WS.Connection -> IO ()
-handleConnection state user conn = runApp state $ do
+handleConnection :: User -> WS.Connection -> App ()
+handleConnection user conn = do
   -- For now just pretend there's only one conversation.
   let defaultConvName = conversationNameGeneral
   Conv.addToConversation user defaultConvName

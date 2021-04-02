@@ -5,7 +5,9 @@
 module Messaging.Client.Terminal.State where
 
 import Data.Text (Text)
-import Lens.Micro (over, set)
+import Data.Maybe (fromMaybe, listToMaybe)
+import Data.Map (keys)
+import Lens.Micro (over, set, (^.))
 import Lens.Micro.TH (makeLenses)
 import qualified Messaging.Client.Core.State as Core
 import qualified Messaging.Shared.Conversation as Conv
@@ -14,6 +16,7 @@ import qualified System.Console.ANSI.Declarative.Widget as Widget
 
 data State = State
   { _coreState :: Core.State,
+    _currentConversation :: Maybe Conv.ConversationName,
     _editor :: Widget.Editor,
     _sidebarExpanded :: Bool,
     _unicodeEnabled :: Bool
@@ -23,9 +26,10 @@ data State = State
 makeLenses ''State
 
 currentConversationName :: State -> Conv.ConversationName
-currentConversationName =
-  -- For now, until we support multiple conversations
-  const Conv.conversationNameGeneral
+currentConversationName = fromMaybe (Conv.ConversationName "No conversation") . _currentConversation
+
+someConversation :: State -> Maybe Conv.ConversationName
+someConversation state = listToMaybe . keys $ state ^. coreState . Core.joinedConversations
 
 handleEditorInput :: Ansi.KeyboardInput -> State -> State
 handleEditorInput input = over editor (Widget.handleInput input)
@@ -49,8 +53,11 @@ overJoinedConversations ::
   State
 overJoinedConversations f name = over coreState (f name)
 
-setConversation :: Conv.ConversationName -> State -> State
-setConversation = overJoinedConversations Core.setConversation
+setConversation :: Maybe Conv.ConversationName -> State -> State
+setConversation Nothing state = set currentConversation Nothing state
+setConversation (Just name) state
+  | hasJoined name state = set currentConversation (Just name) state
+  | otherwise = state
 
 addConversation :: Conv.ConversationName -> State -> State
 addConversation = overJoinedConversations Core.addConversation
@@ -62,4 +69,4 @@ hasJoined :: Conv.ConversationName -> State -> Bool
 hasJoined name = Core.hasJoined name . _coreState
 
 initialState :: State
-initialState = State Core.emptyState (Widget.editor "") True False
+initialState = State Core.emptyState (Just Conv.conversationNameGeneral) (Widget.editor "") True False

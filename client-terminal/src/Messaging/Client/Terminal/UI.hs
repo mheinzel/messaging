@@ -4,10 +4,10 @@
 module Messaging.Client.Terminal.UI where
 
 import Control.Concurrent (Chan, readChan, writeChan)
-import qualified Data.List as List
+import Data.Bifunctor (first)
 import Data.Text (Text)
 import qualified Data.Text as Text
-import Lens.Micro (over)
+import Lens.Micro (over, (^.))
 import qualified Messaging.Client.Core.State as Core
 import Messaging.Client.Terminal.State
 import Messaging.Client.Terminal.View (viewState)
@@ -55,36 +55,45 @@ handleEvent outgoingChan state = \case
     pure $ toggleSidebar state
   Input Input.Enter ->
     case typedCommand state of
-      Just CmdQuit -> Simple.Exit
-      Just CmdSidebar -> Simple.Transition $ do
+      Right (Just CmdQuit) -> Simple.Exit
+      Right (Just CmdSidebar) -> Simple.Transition $ do
         pure $ resetEditor $ toggleSidebar state
-      Just CmdUnicode -> Simple.Transition $ do
+      Right (Just CmdUnicode) -> Simple.Transition $ do
         pure $ resetEditor $ toggleUnicode state
-      Just (CmdJoin conv) -> Simple.Transition $ do
+      Right (Just (CmdJoin conv)) -> Simple.Transition $ do
         let convName = Conv.ConversationName conv
-        if hasJoined convName state then
-          pure $ resetEditor state
-        else do
-          writeChan outgoingChan $ Req.JoinConversation convName
-          pure $ resetEditor $ addConversation convName state
-      Just (CmdLeave conv) -> Simple.Transition $ do
+        if hasJoined convName state
+          then pure $ resetEditor state
+          else do
+            writeChan outgoingChan $ Req.JoinConversation convName
+            pure $ resetEditor $ addConversation convName state
+      Right (Just (CmdLeave conv)) -> Simple.Transition $ do
         let convName = Conv.ConversationName conv
-        if hasJoined convName state then do
-          writeChan outgoingChan (Req.LeaveConversation convName)
-          pure $ resetEditor $ removeConversation convName state
-        else
-          pure $ resetEditor state
-      Just (CmdSwitch conv) -> Simple.Transition $ do
+        if hasJoined convName state
+          then do
+            writeChan outgoingChan (Req.LeaveConversation convName)
+            let newConv
+                  | state ^. currentConversation == Just convName = someConversation state
+                  | otherwise = Just convName
+            pure $
+              resetEditor $
+                setConversation newConv $
+                  removeConversation convName state
+          else pure $ resetEditor state
+      Right (Just (CmdSwitch conv)) -> Simple.Transition $ do
         let convName = Conv.ConversationName conv
-        pure $ resetEditor $ setConversation convName state
-      Just (CmdSend txt) -> Simple.Transition $ do
+        pure $ resetEditor $ setConversation (Just convName) state
+      Right (Just (CmdSend txt)) -> Simple.Transition $ do
         let convName = currentConversationName state
         let msg = Msg.Message convName txt
         writeChan outgoingChan (Req.SendMessage msg)
         pure $ resetEditor state
-      Nothing -> Simple.Transition $ do
+      Right Nothing -> Simple.Transition $ do
         -- Don't send or delete if no command was detected.
         pure state
+      Left _ -> Simple.Transition $ do
+        -- TODO: display error message
+        pure $ resetEditor state
   Input kb -> Simple.Transition $ do
     pure $ handleEditorInput kb state
 
@@ -100,21 +109,32 @@ data Command
     CmdSwitch Text
   | CmdSend Text
 
-typedCommand :: State -> Maybe Command
+data CommandError = CommandError
+  { failedCommand :: Text,
+    errorMsg :: Text
+  }
+
+typedCommand :: State -> Either CommandError (Maybe Command)
 typedCommand = command . Text.strip . Text.unlines . editorContent
   where
     command txt
-      | Text.null txt = Nothing
+      | Text.null txt = Right Nothing
       | Text.isPrefixOf "/" txt = findCommand txt
-      | otherwise = Just (CmdSend txt)
+      | otherwise = Right . Just $ CmdSend txt
 
-    -- TODO: parse command arguments
-    findCommand txt =
-      fmap snd . List.find (flip Text.isPrefixOf txt . fst) $
-        [ ("/quit", CmdQuit),
-          ("/sidebar", CmdSidebar),
-          ("/unicode", CmdUnicode),
-          ("/join", CmdJoin "memes"),
-          ("/leave", CmdLeave "memes"),
-          ("/switch", CmdSwitch "memes")
-        ]
+    parse = first head . splitAt 1 . Text.words
+
+    findCommand txt = case parse txt of
+      ("/quit", []) -> Right . Just $ CmdQuit
+      ("/quit", _) -> Left $ CommandError "/quit" "Usage: /quit"
+      ("/sidebar", []) -> Right . Just $ CmdSidebar
+      ("/sidebar", _) -> Left $ CommandError "/sidebar" "Usage: /sidebar"
+      ("/unicode", []) -> Right . Just $ CmdUnicode
+      ("/unicode", _) -> Left $ CommandError "/unicode" "Usage: /unicode"
+      ("/join", [conv]) -> Right . Just $ CmdJoin conv
+      ("/join", _) -> Left $ CommandError "/join" "Usage: /join <conversation name>"
+      ("/leave", [conv]) -> Right . Just $ CmdLeave conv
+      ("/leave", _) -> Left $ CommandError "/leave" "Usage: /leave <conversation name>"
+      ("/switch", [conv]) -> Right . Just $ CmdSwitch conv
+      ("/switch", _) -> Left $ CommandError "/switch" "Usage: /switch <conversation name>"
+      (unknownCmd, _) -> Left $ CommandError unknownCmd "Not a valid command"

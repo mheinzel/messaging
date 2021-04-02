@@ -22,15 +22,19 @@ import GI.Gtk.Declarative.EventSource (Subscription, fromCancellation)
 -- Custom widget
 --
 
-newtype MessageBoxEvent = ScrolledToBottom Bool
+newtype MessageBoxEvent
+  = ScrolledToBottom Bool
 
-data MessageBoxProps = MessageBoxProps
+data MessageBoxState = MessageBoxState
   { messages :: Vector Text,
     stickToBottom :: Bool
   }
   deriving (Show, Eq)
 
-messageBox :: Vector (Attribute Gtk.ScrolledWindow MessageBoxEvent) -> MessageBoxProps -> Widget MessageBoxEvent
+update :: MessageBoxState -> MessageBoxEvent -> MessageBoxState
+update st event = undefined
+
+messageBox :: Vector (Attribute Gtk.ScrolledWindow MessageBoxEvent) -> MessageBoxState -> Widget MessageBoxEvent
 messageBox customAttributes customParams =
   Widget $
     CustomWidget
@@ -44,7 +48,7 @@ messageBox customAttributes customParams =
   where
     customWidget = Gtk.ScrolledWindow
 
-    customCreate :: MessageBoxProps -> IO (ScrolledWindow, ListBox)
+    customCreate :: MessageBoxState -> IO (ScrolledWindow, ListBox)
     customCreate props = do
       window <- Gtk.new Gtk.ScrolledWindow [#propagateNaturalHeight Gtk.:= True]
       msgBox <- Gtk.new Gtk.ListBox [#valign Gtk.:= AlignEnd]
@@ -55,14 +59,14 @@ messageBox customAttributes customParams =
 
       return (window, msgBox)
 
-    customPatch :: MessageBoxProps -> MessageBoxProps -> ListBox -> CustomPatch ScrolledWindow ListBox
+    customPatch :: MessageBoxState -> MessageBoxState -> ListBox -> CustomPatch ScrolledWindow ListBox
     customPatch old new msgBox
       | Just newMsgs <- getNew (messages old) (messages new) = CustomModify $ \_ -> do
         mapM_ (Gtk.containerAdd msgBox <=< toListRow) newMsgs
         return msgBox
       | otherwise = CustomKeep
 
-    customSubscribe :: MessageBoxProps -> ListBox -> ScrolledWindow -> (MessageBoxEvent -> IO ()) -> IO Subscription
+    customSubscribe :: MessageBoxState -> ListBox -> ScrolledWindow -> (MessageBoxEvent -> IO ()) -> IO Subscription
     customSubscribe props _ scrollWindow callback = do
       vAdjustment <- #getVadjustment scrollWindow
 

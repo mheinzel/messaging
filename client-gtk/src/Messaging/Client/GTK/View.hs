@@ -6,6 +6,7 @@
 
 module Messaging.Client.GTK.View where
 
+import Data.Map as Map
 import Data.Text as Text
 import GI.Gdk (EventKey, getEventKeyString)
 import GI.Gtk
@@ -26,7 +27,7 @@ import GI.Gtk.Declarative.Container.Class (Children)
 import Lens.Micro ((<&>), (^.))
 import Lens.Micro.TH
 import qualified Messaging.Client.Core.State as Core
-import Messaging.Client.GTK.UI.MessageBox (MessageBoxEvent (..), MessageBoxProps (..), messageBox)
+import Messaging.Client.GTK.UI.MessageBox (MessageBoxEvent (..), MessageBoxState (..), messageBox)
 import qualified Messaging.Shared.Conversation as Conv
 import qualified Messaging.Shared.Message as Msg
 import qualified Messaging.Shared.Request as Req
@@ -36,13 +37,13 @@ import qualified Messaging.Shared.User as User
 data Event
   = Inbound Res.Response
   | Outbound Req.Request
-  | StickyMessages Bool
+  | MsgBox (Conv.ConversationName, MessageBoxEvent)
   | Closed
   | Ignore
 
 data State = State
   { _core :: Core.State,
-    _stickyMessages :: Bool
+    _msgBoxes :: Map.Map Conv.ConversationName MessageBoxState
   }
 
 makeLenses ''State
@@ -68,6 +69,8 @@ view st =
     msgBox = messageBox [] (MessageBoxProps msgs (st ^. stickyMessages))
     msgs = fmap renderHistoryEntry (Core.currentHistory $ st ^. core)
     mapMsgBoxEvents ~(ScrolledToBottom b) = StickyMessages b
+
+mkMessageBox
 
 viewHistory :: FromWidget (Container ListBox (Children (Bin ListBoxRow))) target => State -> target event
 viewHistory st =

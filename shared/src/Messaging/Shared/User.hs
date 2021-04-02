@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -15,11 +16,11 @@ import GHC.Generics (Generic)
 
 newtype UserID = UserID {getID :: UUID}
   deriving stock (Eq, Ord, Show, Generic)
-  deriving anyclass (Aeson.ToJSON, Aeson.FromJSON)
+  deriving newtype (Aeson.ToJSON, Aeson.FromJSON)
 
 newtype UserName = UserName {userNameText :: Text}
   deriving stock (Eq, Ord, Show, Generic)
-  deriving anyclass (Aeson.ToJSON, Aeson.FromJSON)
+  deriving newtype (Aeson.ToJSON, Aeson.FromJSON)
 
 data User = User
   { userID :: UserID,

@@ -27,7 +27,7 @@ data Response
   = ReceivedMessage User Message
   | JoinedConversation User ConversationName
   | LeftConversation User ConversationName
-  deriving stock (Show, Generic)
+  deriving stock (Show, Generic, Eq)
   deriving anyclass (Aeson.ToJSON, Aeson.FromJSON)
 
 -- TODO: avoid duplication?

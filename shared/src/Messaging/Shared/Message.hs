@@ -17,5 +17,5 @@ data Message = Message
   { messageConversation :: ConversationName,
     messageContent :: Text
   }
-  deriving stock (Show, Generic)
+  deriving stock (Show, Generic, Eq)
   deriving anyclass (Aeson.ToJSON, Aeson.FromJSON)

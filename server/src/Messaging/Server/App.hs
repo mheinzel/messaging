@@ -5,20 +5,30 @@
 module Messaging.Server.App where
 
 import Control.Concurrent.STM (TVar, newTVarIO)
+import Control.Monad.Logger (LoggingT, MonadLogger)
 import Control.Monad.Reader.Class (MonadReader)
 import Control.Monad.Trans (MonadIO)
 import Control.Monad.Trans.Reader (ReaderT, runReaderT)
 import Data.Map.Strict (Map)
 import Data.Set (Set)
+import qualified Messaging.Server.Log as Log
 import Messaging.Shared.Conversation (ConversationName)
 import Messaging.Shared.User (User, UserID, UserName)
 import qualified Network.WebSockets as WS
+import UnliftIO (MonadUnliftIO)
 
-newtype App a = App {unApp :: ReaderT State IO a}
-  deriving newtype (Functor, Applicative, Monad, MonadReader State, MonadIO)
+newtype App a = App {unApp :: ReaderT State (LoggingT IO) a}
+  deriving newtype (Functor, Applicative, Monad)
+  deriving newtype (MonadReader State, MonadLogger, MonadIO, MonadUnliftIO)
 
-runApp :: State -> App a -> IO a
-runApp s = flip runReaderT s . unApp
+runApp :: Settings -> State -> App a -> IO a
+runApp settings state =
+  Log.runLoggingT (logSettings settings) . flip runReaderT state . unApp
+
+data Settings = Settings
+  { serverPort :: Int,
+    logSettings :: Log.Settings
+  }
 
 data State = State
   { activeConversations :: TVar (Map ConversationName Conversation),

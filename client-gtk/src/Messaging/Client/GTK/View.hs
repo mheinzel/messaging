@@ -6,7 +6,7 @@
 
 module Messaging.Client.GTK.View where
 
-import Data.Map as Map
+import Data.Maybe (fromMaybe)
 import Data.Text as Text
 import GI.Gdk (EventKey, getEventKeyString)
 import GI.Gtk
@@ -27,7 +27,7 @@ import GI.Gtk.Declarative.Container.Class (Children)
 import Lens.Micro ((<&>), (^.))
 import Lens.Micro.TH
 import qualified Messaging.Client.Core.State as Core
-import Messaging.Client.GTK.UI.MessageBox (MessageBoxEvent (..), MessageBoxState (..), messageBox)
+import Messaging.Client.GTK.UI.MessageBox (MessageBoxEvent (..), MessageBoxProps (..), messageBox)
 import qualified Messaging.Shared.Conversation as Conv
 import qualified Messaging.Shared.Message as Msg
 import qualified Messaging.Shared.Request as Req
@@ -37,13 +37,13 @@ import qualified Messaging.Shared.User as User
 data Event
   = Inbound Res.Response
   | Outbound Req.Request
-  | MsgBox (Conv.ConversationName, MessageBoxEvent)
+  | StickyMessages Bool
   | Closed
   | Ignore
 
 data State = State
   { _core :: Core.State,
-    _msgBoxes :: Map.Map Conv.ConversationName MessageBoxState
+    _stickyMessages :: Bool
   }
 
 makeLenses ''State
@@ -67,15 +67,13 @@ view st =
       ]
   where
     msgBox = messageBox [] (MessageBoxProps msgs (st ^. stickyMessages))
-    msgs = fmap renderHistoryEntry (Core.currentHistory $ st ^. core)
+    msgs = fmap renderHistoryEntry (fromMaybe mempty $ Core.history Conv.conversationNameGeneral $ st ^. core)
     mapMsgBoxEvents ~(ScrolledToBottom b) = StickyMessages b
-
-mkMessageBox
 
 viewHistory :: FromWidget (Container ListBox (Children (Bin ListBoxRow))) target => State -> target event
 viewHistory st =
   container ListBox [#valign := AlignEnd] $
-    Core.currentHistory (st ^. core) <&> \req ->
+    (fromMaybe mempty $ Core.history Conv.conversationNameGeneral $ st ^. core) <&> \req ->
       bin ListBoxRow [#activatable := False, #selectable := False] $
         widget Label [#label := renderHistoryEntry req]
 
@@ -86,7 +84,6 @@ renderHistoryEntry (Core.UserJoined user) =
   User.userNameText user <> " JOINED"
 renderHistoryEntry (Core.UserLeft user) =
   User.userNameText user <> " LEFT"
-renderHistoryEntry (Core.NewMessages amount) = Text.pack (show amount) <> " NEW MESSAGES"
 
 windowKeyPressEventHandler :: EventKey -> Entry -> IO (Bool, Event)
 windowKeyPressEventHandler eventKey entry = do

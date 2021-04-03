@@ -15,7 +15,8 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import Messaging.Server.App (App, Conversation (Conversation, conversationMembers), activeConversations)
 import qualified Messaging.Server.Delivery as Delivery
-import Messaging.Shared.Conversation (ConversationName)
+import qualified Messaging.Server.Log as Log
+import Messaging.Shared.Conversation (ConversationName (conversationNameText))
 import Messaging.Shared.Message (Message (..))
 import qualified Messaging.Shared.Response as Res
 import Messaging.Shared.User (User (userID), UserID)
@@ -68,8 +69,7 @@ broadcastLeft user conv =
 
 broadcast :: ConversationName -> Res.Response -> App ()
 broadcast convName response = do
-  -- TODO: introduce proper logging
-  liftIO $ print response
+  Log.debug $ conversationNameText convName <> ": " <> Res.serializeToText response
 
   users <- getConversationMembers convName
   _missing <- Delivery.deliver users response

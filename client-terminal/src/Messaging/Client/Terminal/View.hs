@@ -30,7 +30,7 @@ viewState :: State -> Widget.SomeWidget
 viewState state
   | _sidebarExpanded state =
     Widget.SomeWidget $
-      Widget.splitRight 26
+      Widget.splitRight 29 -- max conv name length + some spacing
         |> viewMainWindow borderChars state
         |> viewSideBar borderChars state
   | otherwise =
@@ -73,7 +73,7 @@ viewInstructions =
         "/switch CONVERSATION",
         "",
         "Enter: send message",
-        "Up/Down: select conv",
+        "▲/▼: select conversation",
         "Tab: toggle sidebar",
         "Escape: quit"
       ]

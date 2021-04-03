@@ -4,7 +4,6 @@
 module Messaging.Client.Terminal.UI where
 
 import Control.Concurrent (Chan, readChan, writeChan)
-import Data.Bifunctor (first)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Lens.Micro (over)
@@ -69,18 +68,15 @@ handleEvent outgoingChan state = \case
         pure $ resetEditor $ toggleSidebar state
       Right (Just CmdUnicode) -> Simple.Transition $ do
         pure $ resetEditor $ toggleUnicode state
-      Right (Just (CmdJoin conv)) -> Simple.Transition $ do
-        let convName = Conv.ConversationName conv
+      Right (Just (CmdJoin convName)) -> Simple.Transition $ do
         writeChan outgoingChan $ Req.JoinConversation convName
         -- already mark this conversation as focussed, so it will be the
         -- current one once the server adds us to it.
         pure $ resetEditor $ focusConversation convName state
-      Right (Just (CmdLeave conv)) -> Simple.Transition $ do
-        let convName = Conv.ConversationName conv
+      Right (Just (CmdLeave convName)) -> Simple.Transition $ do
         writeChan outgoingChan (Req.LeaveConversation convName)
         pure $ resetEditor state
-      Right (Just (CmdSwitch conv)) -> Simple.Transition $ do
-        let convName = Conv.ConversationName conv
+      Right (Just (CmdSwitch convName)) -> Simple.Transition $ do
         pure $ resetEditor $ focusConversation convName state
       Right (Just (CmdSend txt)) -> Simple.Transition $ do
         case currentConversationName state of
@@ -105,11 +101,11 @@ data Command
   | CmdSidebar
   | CmdUnicode
   | -- | Join a conversation
-    CmdJoin Text
+    CmdJoin Conv.ConversationName
   | -- | Leave a conversation
-    CmdLeave Text
+    CmdLeave Conv.ConversationName
   | -- | Switch to a conversation
-    CmdSwitch Text
+    CmdSwitch Conv.ConversationName
   | CmdSend Text
 
 data CommandError = CommandError
@@ -125,19 +121,19 @@ typedCommand = command . Text.strip . Text.unlines . editorContent
       | Text.isPrefixOf "/" txt = findCommand txt
       | otherwise = Right . Just $ CmdSend txt
 
-    parse = first head . splitAt 1 . Text.words
+    findCommand txt = case Text.words txt of
+      -- ignore text after these commands
+      ("/quit" : _) -> Right . Just $ CmdQuit
+      ("/sidebar" : _) -> Right . Just $ CmdSidebar
+      ("/unicode" : _) -> Right . Just $ CmdUnicode
+      -- parse conversation name
+      ("/join" : rest) -> conversationCommand CmdJoin "/join" rest
+      ("/leave" : rest) -> conversationCommand CmdLeave "/leave" rest
+      ("/switch" : rest) -> conversationCommand CmdSwitch "/switch" rest
+      -- fallback
+      other -> Left $ CommandError (head other) "Not a valid command"
 
-    findCommand txt = case parse txt of
-      ("/quit", []) -> Right . Just $ CmdQuit
-      ("/quit", _) -> Left $ CommandError "/quit" "Usage: /quit"
-      ("/sidebar", []) -> Right . Just $ CmdSidebar
-      ("/sidebar", _) -> Left $ CommandError "/sidebar" "Usage: /sidebar"
-      ("/unicode", []) -> Right . Just $ CmdUnicode
-      ("/unicode", _) -> Left $ CommandError "/unicode" "Usage: /unicode"
-      ("/join", [conv]) -> Right . Just $ CmdJoin conv
-      ("/join", _) -> Left $ CommandError "/join" "Usage: /join <conversation name>"
-      ("/leave", [conv]) -> Right . Just $ CmdLeave conv
-      ("/leave", _) -> Left $ CommandError "/leave" "Usage: /leave <conversation name>"
-      ("/switch", [conv]) -> Right . Just $ CmdSwitch conv
-      ("/switch", _) -> Left $ CommandError "/switch" "Usage: /switch <conversation name>"
-      (unknownCmd, _) -> Left $ CommandError unknownCmd "Not a valid command"
+    conversationCommand cmd _ [c]
+      | Just convName <- Conv.mkConversationName c = Right . Just $ cmd convName
+    conversationCommand _ txtCmd _ =
+      Left $ CommandError txtCmd $ "Usage: " <> txtCmd <> " <conversation name>"

@@ -52,7 +52,7 @@ viewSideBar borderChars state =
               PP.annotate (PP.color PP.Cyan) $
                 Widget.centeredText "Conversations"
         |> do
-          Widget.splitBottom 10
+          Widget.splitBottom 12
             |> do
               Widget.padding (Widget.padTop 1) $
                 viewConversationList $
@@ -67,6 +67,9 @@ viewInstructions =
       [ "/quit",
         "/sidebar",
         "/unicode",
+        "/join",
+        "/leave",
+        "/switch",
         "",
         "Enter: send message",
         "Up/Down: select conv",

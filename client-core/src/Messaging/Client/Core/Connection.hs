@@ -66,8 +66,8 @@ runClientApp URI {uriSecure, uriHost, uriPort, uriPath} userName client = do
 
   withSocketsDo $
     if uriSecure
-      then WS.runClientWith host port path options headers client
-      else Wuss.runSecureClientWith host (fromIntegral port) path options headers client
+      then Wuss.runSecureClientWith host (fromIntegral port) path options headers client
+      else WS.runClientWith host port path options headers client
 
 -- IDEA: If we used the async package here, we coul check whether any of the
 -- spawned threads terminated and re-raise the exception in the main thread.

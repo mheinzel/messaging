@@ -67,9 +67,9 @@ viewInstructions =
       [ "/quit",
         "/sidebar",
         "/unicode",
-        "/join",
-        "/leave",
-        "/switch",
+        "/join CONVERSATION",
+        "/leave CONVERSATION",
+        "/switch CONVERSATION",
         "",
         "Enter: send message",
         "Up/Down: select conv",
@@ -85,8 +85,9 @@ viewConversationList ::
 viewConversationList state convs =
   Widget.prettyBlock $
     PP.vsep $
-      map (\convName -> renderConversationName (isFocused convName state) convName) (toList convs)
-        <> pure ""
+      map
+        (\convName -> renderConversationName (isFocused convName state) convName)
+        (toList convs)
 
 viewMainWindow :: Widget.BorderCharacters -> State -> Widget.Split
 viewMainWindow borderChars state =
@@ -133,7 +134,7 @@ renderConversationName focusState =
   let color = case focusState of
         Focused -> PP.Cyan
         Unfocused -> PP.Red
-  in PP.annotate (PP.color color) . PP.pretty . ("#" <>) . Conv.conversationNameText
+   in PP.annotate (PP.color color) . PP.pretty . ("#" <>) . Conv.conversationNameText
 
 renderUserName :: User.UserName -> PP.Doc PP.AnsiStyle
 renderUserName =

@@ -22,8 +22,6 @@ module Server
     assertReceivedMessage,
     assertJoinedConversation,
     assertLeftConversation,
-    assertResponseIs,
-    joinedConversation,
   )
 where
 
@@ -33,7 +31,6 @@ import qualified Control.Exception as Exc
 import Data.ByteString.Lazy (toChunks)
 import Data.Foldable (traverse_)
 import Data.Text (Text)
-import Data.UUID (nil)
 import qualified Messaging.Server as Server
 import qualified Messaging.Server.App as App
 import qualified Messaging.Server.Log as Log
@@ -48,7 +45,7 @@ import Network.WebSockets.Stream (Stream, makeStream)
 import Say (sayString) -- concurrent output without interleaving
 import System.Timeout (timeout)
 import Test.HUnit (assertEqual, assertFailure)
-import Test.Hspec (Expectation, HasCallStack)
+import Test.Hspec (HasCallStack)
 
 -- Server ---------------------------------------------------------------------
 
@@ -191,26 +188,3 @@ assertLeftConversation client assertion =
   assertReceivedResponse client $ \case
     Res.LeftConversation user conv -> assertion (User.userName user) conv
     other -> assertFailure $ "expected LeftConversation, but got: " <> show other
-
-assertResponseIs :: HasCallStack => Res.Response -> Res.Response -> Expectation
-assertResponseIs response1 response2 =
-  assertEqual "" (normalizeResponse response1) (normalizeResponse response2)
-
-joinedConversation :: Text -> Text -> Res.Response
-joinedConversation userName conversationName =
-  Res.JoinedConversation
-    (dummyUser userName)
-    (Conv.ConversationName conversationName)
-
-dummyUser :: Text -> User.User
-dummyUser userName =
-  User.User {User.userID = User.UserID nil, User.userName = User.UserName userName}
-
-normalizeResponse :: Res.Response -> Res.Response
-normalizeResponse = \case
-  Res.ReceivedMessage user msg -> Res.ReceivedMessage (normalizeUser user) msg
-  Res.JoinedConversation user conv -> Res.JoinedConversation (normalizeUser user) conv
-  Res.LeftConversation user conv -> Res.LeftConversation (normalizeUser user) conv
-
-normalizeUser :: User.User -> User.User
-normalizeUser user = user {User.userID = User.UserID nil}

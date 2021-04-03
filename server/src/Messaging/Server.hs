@@ -4,7 +4,6 @@
 module Messaging.Server where
 
 import Control.Monad (forever)
-import qualified Control.Monad.Logger as Log (LogLevel (LevelDebug))
 import Control.Monad.Trans (MonadIO (liftIO))
 import Messaging.Server.App (App, Settings (..), initialState, runApp)
 import qualified Messaging.Server.Auth as Auth

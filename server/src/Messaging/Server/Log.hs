@@ -5,6 +5,7 @@ module Messaging.Server.Log
   ( -- * App internals
     Settings (..),
     LoggingMode (..),
+    Log.LogLevel (..),
     runLoggingT,
 
     -- * Convenience functions independent of underlying implementation

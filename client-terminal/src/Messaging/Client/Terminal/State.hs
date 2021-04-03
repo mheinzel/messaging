@@ -32,10 +32,16 @@ data State = State
 
 makeLenses ''State
 
-data FocusState
-  = Focused
-  | Unfocused
-  deriving (Eq, Show)
+initialState :: User.UserName -> State
+initialState user =
+  State
+    (Core.emptyState user)
+    [Conv.ConversationName "general"] -- fallback
+    (Widget.editor "")
+    True
+    False
+
+-- Get ------------------------------------------------------------------------
 
 currentConversationName :: State -> Maybe Conv.ConversationName
 currentConversationName state =
@@ -47,25 +53,20 @@ currentConversation :: State -> Maybe Core.ConversationState
 currentConversation state =
   currentConversationName state >>= flip Core.conversationState (_coreState state)
 
+data FocusState
+  = Focused
+  | Unfocused
+  deriving (Eq, Show)
+
 isFocused :: Conv.ConversationName -> State -> FocusState
 isFocused name state = case currentConversationName state of
   Just convName | convName == name -> Focused
   _ -> Unfocused
 
-handleEditorInput :: Ansi.KeyboardInput -> State -> State
-handleEditorInput input = over editor (Widget.handleInput input)
-
-resetEditor :: State -> State
-resetEditor = set editor (Widget.editor "")
-
 editorContent :: State -> [Text]
 editorContent = Widget.editorContent . _editor
 
-toggleSidebar :: State -> State
-toggleSidebar = over sidebarExpanded not
-
-toggleUnicode :: State -> State
-toggleUnicode = over unicodeEnabled not
+-- Update ---------------------------------------------------------------------
 
 -- | This can technically grow unbounded, but should be slow enough to not matter.
 setConversation :: Conv.ConversationName -> State -> State
@@ -104,11 +105,14 @@ nextConversation = changeConversation Next
 previousConversation :: State -> State
 previousConversation = changeConversation Previous
 
-initialState :: User.UserName -> State
-initialState user =
-  State
-    (Core.emptyState user)
-    [Conv.ConversationName "general"] -- fallback
-    (Widget.editor "")
-    True
-    False
+handleEditorInput :: Ansi.KeyboardInput -> State -> State
+handleEditorInput input = over editor (Widget.handleInput input)
+
+resetEditor :: State -> State
+resetEditor = set editor (Widget.editor "")
+
+toggleSidebar :: State -> State
+toggleSidebar = over sidebarExpanded not
+
+toggleUnicode :: State -> State
+toggleUnicode = over unicodeEnabled not

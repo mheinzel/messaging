@@ -8,10 +8,13 @@ module Messaging.Client.GTK.View where
 
 import Data.Maybe (fromMaybe)
 import Data.Text as Text
+import Data.Vector as Vec
+import Debug.Trace (trace)
 import GI.Gdk (EventKey, getEventKeyString)
 import GI.Gtk
   ( Align (..),
     Box (..),
+    Button (..),
     Entry (..),
     Label (..),
     ListBox (..),
@@ -33,7 +36,6 @@ import qualified Messaging.Shared.Message as Msg
 import qualified Messaging.Shared.Request as Req
 import qualified Messaging.Shared.Response as Res
 import qualified Messaging.Shared.User as User
-import Debug.Trace (trace)
 
 data Event
   = Inbound Res.Response
@@ -58,19 +60,40 @@ view st =
       #heightRequest := 600,
       on #deleteEvent (const (True, Closed))
     ]
-    $ notebook [] $ mkConversationPage (st ^. stickyMsgBox) <$> Core.getAllConversationStates (_core st)
+    $ notebook [] $
+      trace (show $ Core.getAllConversationStates (_core st)) $
+      (mkConversationPage (st ^. stickyMsgBox) <$> Core.getAllConversationStates (_core st))
+        <> Vec.singleton addConversationPage
+
+addConversationPage :: Page Event
+addConversationPage =
+  page "+" $
+    centered $
+      container
+        Box
+        [#orientation := OrientationHorizontal, #valign := AlignCenter, #spacing := 20]
+        [ BoxChild defaultBoxChildProperties $ widget Label [#label := "Join conversation: "],
+          BoxChild defaultBoxChildProperties $ widget Entry [onM #keyPressEvent newConversationEntryHandler]
+        ]
 
 mkConversationPage :: Bool -> (Conv.ConversationName, Core.ConversationState) -> Page Event
 mkConversationPage sticky (name, convSt) =
-  page (Conv.conversationNameText name) $
-    container
+  pageWithTab
+    ( container
+        Box
+        [#orientation := OrientationHorizontal, #spacing := 20]
+        [ widget Label [#label := Conv.conversationNameText name],
+          widget Button [#label := "X", on #clicked (Outbound $ Req.LeaveConversation name)]
+        ]
+    )
+    $ container
       Box
       [#orientation := OrientationVertical]
       [ BoxChild defaultBoxChildProperties {expand = True, fill = True} $ mapMsgBoxEvents <$> msgBox,
-        widget Entry [onM #keyPressEvent (conversationKeyPressHandler name)]
+        BoxChild defaultBoxChildProperties $ widget Entry [onM #keyPressEvent (conversationEntryHandler name)]
       ]
   where
-    msgBox = trace ("MSGS: " ++ show msgs) $ messageBox [] (MessageBoxProps msgs sticky)
+    msgBox = messageBox [] (MessageBoxProps msgs sticky)
     msgs = fmap renderHistoryEntry $ convSt ^. Core.conversationHistory . Core.historyEntries
     mapMsgBoxEvents ~(ScrolledToBottom b) = StickyConversation b
 
@@ -82,8 +105,14 @@ renderHistoryEntry (Core.UserJoined user) =
 renderHistoryEntry (Core.UserLeft user) =
   User.userNameText user <> " LEFT"
 
-conversationKeyPressHandler :: Conv.ConversationName -> EventKey -> Entry -> IO (Bool, Event)
-conversationKeyPressHandler name eventKey entry = do
+newConversationEntryHandler :: EventKey -> Entry -> IO (Bool, Event)
+newConversationEntryHandler = entryHandler $ \msg -> Outbound $ Req.JoinConversation $ Conv.ConversationName msg
+
+conversationEntryHandler :: Conv.ConversationName -> EventKey -> Entry -> IO (Bool, Event)
+conversationEntryHandler name = entryHandler $ \msg -> Outbound $ Req.SendMessage $ Msg.Message name msg
+
+entryHandler :: (Text -> Event) -> EventKey -> Entry -> IO (Bool, Event)
+entryHandler handleFun eventKey entry = do
   key <- getEventKeyString eventKey
   case key of
     Just "\ESC" -> return (True, Closed)
@@ -93,5 +122,17 @@ conversationKeyPressHandler name eventKey entry = do
 
       if Text.null msg
         then return (True, Ignore)
-        else return (True, Outbound $ Req.SendMessage $ Msg.Message name msg)
+        else return (True, handleFun msg)
     _ -> return (False, Ignore)
+
+centered :: Widget e -> Widget e
+centered w =
+  container
+    Box
+    [#orientation := OrientationVertical]
+    [ BoxChild defaultBoxChildProperties {expand = True, padding = 10} $
+        container
+          Box
+          [#orientation := OrientationHorizontal]
+          [BoxChild defaultBoxChildProperties {expand = True, padding = 10} w]
+    ]

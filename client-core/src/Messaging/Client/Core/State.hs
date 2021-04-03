@@ -17,15 +17,22 @@ import qualified Messaging.Shared.Response as Res
 import qualified Messaging.Shared.User as User
 
 data State = State
-  { _joinedConversations :: Map Conv.ConversationName ConversationState
+  { _currentUser :: User.UserName,
+    _joinedConversations :: Map Conv.ConversationName ConversationState
   }
   deriving (Show)
+
+emptyState :: User.UserName -> State
+emptyState user = State user mempty
 
 data ConversationState = ConversationState
   { _conversationName :: Conv.ConversationName,
     _conversationHistory :: ConversationHistory
   }
   deriving (Show)
+
+emptyConversation :: Conv.ConversationName -> ConversationState
+emptyConversation convName = ConversationState convName $ ConversationHistory Vector.empty
 
 newtype ConversationHistory = ConversationHistory
   { _historyEntries :: Vector ConversationHistoryEntry
@@ -69,12 +76,6 @@ addHistoryEntry ::
 addHistoryEntry entry =
   over (conversationHistory . historyEntries) (`Vector.snoc` entry)
 
-emptyConversation :: Conv.ConversationName -> ConversationState
-emptyConversation convName = ConversationState convName $ ConversationHistory Vector.empty
-
-emptyState :: State
-emptyState = State mempty
-
 addConversation :: Conv.ConversationName -> State -> State
 addConversation name =
   over
@@ -94,6 +95,11 @@ handleServerResponse (Res.ReceivedMessage user msg) =
 handleServerResponse (Res.JoinedConversation user convName) =
   modifyConvState convName $
     addHistoryEntry $ UserJoined $ User.userName user
-handleServerResponse (Res.LeftConversation user convName) =
-  modifyConvState convName $
-    addHistoryEntry (UserLeft $ User.userName user)
+handleServerResponse (Res.LeftConversation user convName) = \state ->
+  if User.userName user == _currentUser state
+    then removeConversation convName state
+    else
+      modifyConvState
+        convName
+        (addHistoryEntry (UserLeft $ User.userName user))
+        state

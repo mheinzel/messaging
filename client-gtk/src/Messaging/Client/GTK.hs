@@ -6,7 +6,7 @@ module Messaging.Client.GTK where
 import qualified Data.Text as Text
 import qualified Messaging.Client.Core.Connection as Conn
 import qualified Messaging.Client.GTK.UI as UI
-import Messaging.Shared.User (mkUserName)
+import qualified Messaging.Shared.User as User
 import qualified Network.WebSockets as WS
 import qualified System.Environment as Env
 import qualified System.Exit as Exit
@@ -18,16 +18,16 @@ runClient = do
   userName <- do
     progName <- Env.getProgName
     Env.getArgs >>= \case
-      [name] -> case mkUserName (Text.pack name) of
+      [name] -> case User.mkUserName (Text.pack name) of
         Just userName -> pure userName
         Nothing -> Exit.die "error: invalid user name"
       _ -> Exit.die $ "usage: " <> progName <> " USERNAME"
 
   let uri = Conn.defaultURI
 
-  Conn.runClientApp uri userName client
+  Conn.runClientApp uri userName (client userName)
 
-client :: WS.ClientApp ()
-client conn = do
+client :: User.UserName -> WS.ClientApp ()
+client userName conn = do
   putStrLn "Connected!"
-  Conn.withConnectionThreads conn UI.runUI
+  Conn.withConnectionThreads conn (UI.runUI userName)

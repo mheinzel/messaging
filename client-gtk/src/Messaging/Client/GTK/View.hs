@@ -33,17 +33,18 @@ import qualified Messaging.Shared.Message as Msg
 import qualified Messaging.Shared.Request as Req
 import qualified Messaging.Shared.Response as Res
 import qualified Messaging.Shared.User as User
+import Debug.Trace (trace)
 
 data Event
   = Inbound Res.Response
   | Outbound Req.Request
-  | StickyMessages Bool
+  | StickyConversation Bool
   | Closed
   | Ignore
 
 data State = State
   { _core :: Core.State,
-    _stickyMessages :: Bool
+    _stickyMsgBox :: Bool
   }
 
 makeLenses ''State
@@ -57,25 +58,21 @@ view st =
       #heightRequest := 600,
       on #deleteEvent (const (True, Closed))
     ]
-    $ container
+    $ notebook [] $ mkConversationPage (st ^. stickyMsgBox) <$> Core.getAllConversationStates (_core st)
+
+mkConversationPage :: Bool -> (Conv.ConversationName, Core.ConversationState) -> Page Event
+mkConversationPage sticky (name, convSt) =
+  page (Conv.conversationNameText name) $
+    container
       Box
       [#orientation := OrientationVertical]
-      [ BoxChild defaultBoxChildProperties {expand = True, fill = True} $
-          mapMsgBoxEvents <$> msgBox,
-        BoxChild defaultBoxChildProperties $
-          widget Entry [onM #keyPressEvent windowKeyPressEventHandler]
+      [ BoxChild defaultBoxChildProperties {expand = True, fill = True} $ mapMsgBoxEvents <$> msgBox,
+        widget Entry [onM #keyPressEvent (conversationKeyPressHandler name)]
       ]
   where
-    msgBox = messageBox [] (MessageBoxProps msgs (st ^. stickyMessages))
-    msgs = fmap renderHistoryEntry (fromMaybe mempty $ Core.history Conv.conversationNameGeneral $ st ^. core)
-    mapMsgBoxEvents ~(ScrolledToBottom b) = StickyMessages b
-
-viewHistory :: FromWidget (Container ListBox (Children (Bin ListBoxRow))) target => State -> target event
-viewHistory st =
-  container ListBox [#valign := AlignEnd] $
-    (fromMaybe mempty $ Core.history Conv.conversationNameGeneral $ st ^. core) <&> \req ->
-      bin ListBoxRow [#activatable := False, #selectable := False] $
-        widget Label [#label := renderHistoryEntry req]
+    msgBox = trace ("MSGS: " ++ show msgs) $ messageBox [] (MessageBoxProps msgs sticky)
+    msgs = fmap renderHistoryEntry $ convSt ^. Core.conversationHistory . Core.historyEntries
+    mapMsgBoxEvents ~(ScrolledToBottom b) = StickyConversation b
 
 renderHistoryEntry :: Core.ConversationHistoryEntry -> Text
 renderHistoryEntry (Core.Message user msg) =
@@ -85,8 +82,8 @@ renderHistoryEntry (Core.UserJoined user) =
 renderHistoryEntry (Core.UserLeft user) =
   User.userNameText user <> " LEFT"
 
-windowKeyPressEventHandler :: EventKey -> Entry -> IO (Bool, Event)
-windowKeyPressEventHandler eventKey entry = do
+conversationKeyPressHandler :: Conv.ConversationName -> EventKey -> Entry -> IO (Bool, Event)
+conversationKeyPressHandler name eventKey entry = do
   key <- getEventKeyString eventKey
   case key of
     Just "\ESC" -> return (True, Closed)
@@ -94,9 +91,7 @@ windowKeyPressEventHandler eventKey entry = do
       msg <- entryGetText entry
       entrySetText entry ""
 
-      -- Don't sent empty messages
       if Text.null msg
         then return (True, Ignore)
-        else return (True, Outbound $ Req.SendMessage $ Msg.Message Conv.conversationNameGeneral msg)
-    Just _ -> return (False, Ignore)
+        else return (True, Outbound $ Req.SendMessage $ Msg.Message name msg)
     _ -> return (False, Ignore)

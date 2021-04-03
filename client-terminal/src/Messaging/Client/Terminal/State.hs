@@ -6,8 +6,9 @@ module Messaging.Client.Terminal.State where
 
 import qualified Data.List as List
 import qualified Data.Map as Map
+import Data.Maybe (fromJust)
 import Data.Text (Text)
-import Lens.Micro (over, set)
+import Lens.Micro (over, set, (^.))
 import Lens.Micro.TH (makeLenses)
 import qualified Messaging.Client.Core.State as Core
 import qualified Messaging.Shared.Conversation as Conv
@@ -69,6 +70,39 @@ toggleUnicode = over unicodeEnabled not
 -- | This can technically grow unbounded, but should be slow enough to not matter.
 setConversation :: Conv.ConversationName -> State -> State
 setConversation name = over focusedConversations (name :)
+
+data ChangeConversationDirection
+  = Previous
+  | Next
+  deriving (Eq, Show)
+
+-- TODO: better name to differentiate this function from setConversation
+changeConversation :: ChangeConversationDirection -> State -> State
+changeConversation dir state = state'
+  where
+    currentConv = currentConversationName state
+    convs = Map.keys $ state ^. coreState . Core.joinedConversations
+    state' = case (currentConv, convs) of
+      (Nothing, c : _) -> setConversation c state
+      (Just conv, cs@(_ : _)) -> setConversation (targetConv conv cs) state
+      _ -> state
+    -- If currentConv is not Nothing, it is already known that conv is in cs,
+    -- thus elemIndex will always return a Just value here as long as convIndex is only called
+    -- when currentConv is a Just value.
+    convIndex conv cs = fromJust $ List.elemIndex conv cs
+    op = case dir of
+      Previous -> (-)
+      Next -> (+)
+    targetConv conv cs = cyclicIndex cs $ convIndex conv cs `op` 1
+      where
+        cyclicIndex :: [a] -> Int -> a
+        cyclicIndex xs i = xs !! (i `mod` length xs)
+
+nextConversation :: State -> State
+nextConversation = changeConversation Next
+
+previousConversation :: State -> State
+previousConversation = changeConversation Previous
 
 initialState :: User.UserName -> State
 initialState user =

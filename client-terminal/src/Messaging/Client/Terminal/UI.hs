@@ -15,16 +15,21 @@ import qualified Messaging.Shared.Conversation as Conv
 import qualified Messaging.Shared.Message as Msg
 import qualified Messaging.Shared.Request as Req
 import qualified Messaging.Shared.Response as Res
+import qualified Messaging.Shared.User as User
 import qualified System.Console.ANSI.Declarative.Input as Input
 import qualified System.Console.ANSI.Declarative.Simple as Simple
 import qualified System.Console.ANSI.Declarative.Widget as Widget
 
-runUI :: Chan Res.Response -> Chan Req.Request -> IO ()
-runUI incomingChan outgoingChan = do
-  () <$ Simple.runApp (app incomingChan outgoingChan)
+runUI :: User.UserName -> Chan Res.Response -> Chan Req.Request -> IO ()
+runUI user incomingChan outgoingChan = do
+  () <$ Simple.runApp (app user incomingChan outgoingChan)
 
-app :: Chan Res.Response -> Chan Req.Request -> Simple.App Widget.SomeWidget State Event
-app incomingChan outgoingChan =
+app ::
+  User.UserName ->
+  Chan Res.Response ->
+  Chan Req.Request ->
+  Simple.App Widget.SomeWidget State Event
+app user incomingChan outgoingChan =
   Simple.App
     { Simple.update = handleEvent outgoingChan,
       Simple.view = const viewState,
@@ -33,7 +38,7 @@ app incomingChan outgoingChan =
           Input <$> Input.readInput,
           Tick <$ Input.waitForTickMilliseconds 1000
         ],
-      Simple.initialState = initialState
+      Simple.initialState = initialState user
     }
 
 data Event

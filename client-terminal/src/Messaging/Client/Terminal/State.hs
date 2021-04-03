@@ -11,6 +11,7 @@ import Lens.Micro (over, set, (^.))
 import Lens.Micro.TH (makeLenses)
 import qualified Messaging.Client.Core.State as Core
 import qualified Messaging.Shared.Conversation as Conv
+import qualified Messaging.Shared.User as User
 import qualified System.Console.ANSI.Declarative.Input as Ansi
 import qualified System.Console.ANSI.Declarative.Widget as Widget
 
@@ -68,5 +69,11 @@ removeConversation = overJoinedConversations Core.removeConversation
 hasJoined :: Conv.ConversationName -> State -> Bool
 hasJoined name = Core.hasJoined name . _coreState
 
-initialState :: State
-initialState = State Core.emptyState (Just Conv.conversationNameGeneral) (Widget.editor "") True False
+initialState :: User.UserName -> State
+initialState user =
+  State
+    (Core.emptyState user)
+    Nothing
+    (Widget.editor "")
+    True
+    False

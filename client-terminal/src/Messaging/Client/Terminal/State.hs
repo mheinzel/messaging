@@ -4,10 +4,10 @@
 
 module Messaging.Client.Terminal.State where
 
+import qualified Data.List as List
+import qualified Data.Map as Map
 import Data.Text (Text)
-import Data.Maybe (fromMaybe, listToMaybe)
-import Data.Map (keys)
-import Lens.Micro (over, set, (^.))
+import Lens.Micro (over, set)
 import Lens.Micro.TH (makeLenses)
 import qualified Messaging.Client.Core.State as Core
 import qualified Messaging.Shared.Conversation as Conv
@@ -17,7 +17,12 @@ import qualified System.Console.ANSI.Declarative.Widget as Widget
 
 data State = State
   { _coreState :: Core.State,
-    _currentConversation :: Maybe Conv.ConversationName,
+    -- | Stack of most recently focussed conversations. Not all of them
+    -- necessarily exist anymore, so before being used they should always be
+    -- checked against the conversations in the core 'Core.State'.
+    -- The benefit of this is that we can always fall back to the previously
+    -- focussed conversation if the current one becomes unavailable.
+    _focussedConversations :: [Conv.ConversationName],
     _editor :: Widget.Editor,
     _sidebarExpanded :: Bool,
     _unicodeEnabled :: Bool
@@ -26,11 +31,15 @@ data State = State
 
 makeLenses ''State
 
-currentConversationName :: State -> Conv.ConversationName
-currentConversationName = fromMaybe (Conv.ConversationName "No conversation") . _currentConversation
+currentConversationName :: State -> Maybe Conv.ConversationName
+currentConversationName state =
+  List.find
+    (`Map.member` Core._joinedConversations (_coreState state))
+    (_focussedConversations state)
 
-someConversation :: State -> Maybe Conv.ConversationName
-someConversation state = listToMaybe . keys $ state ^. coreState . Core.joinedConversations
+currentConversation :: State -> Maybe Core.ConversationState
+currentConversation state =
+  currentConversationName state >>= flip Core.conversationState (_coreState state)
 
 handleEditorInput :: Ansi.KeyboardInput -> State -> State
 handleEditorInput input = over editor (Widget.handleInput input)
@@ -47,33 +56,15 @@ toggleSidebar = over sidebarExpanded not
 toggleUnicode :: State -> State
 toggleUnicode = over unicodeEnabled not
 
-overJoinedConversations ::
-  (Conv.ConversationName -> Core.State -> Core.State) ->
-  Conv.ConversationName ->
-  State ->
-  State
-overJoinedConversations f name = over coreState (f name)
-
-setConversation :: Maybe Conv.ConversationName -> State -> State
-setConversation Nothing state = set currentConversation Nothing state
-setConversation (Just name) state
-  | hasJoined name state = set currentConversation (Just name) state
-  | otherwise = state
-
-addConversation :: Conv.ConversationName -> State -> State
-addConversation = overJoinedConversations Core.addConversation
-
-removeConversation :: Conv.ConversationName -> State -> State
-removeConversation = overJoinedConversations Core.removeConversation
-
-hasJoined :: Conv.ConversationName -> State -> Bool
-hasJoined name = Core.hasJoined name . _coreState
+-- | This can technically grow unbounded, but should be slow enough to not matter.
+setConversation :: Conv.ConversationName -> State -> State
+setConversation name = over focussedConversations (name :)
 
 initialState :: User.UserName -> State
 initialState user =
   State
     (Core.emptyState user)
-    Nothing
+    [Conv.ConversationName "general"] -- fallback
     (Widget.editor "")
     True
     False

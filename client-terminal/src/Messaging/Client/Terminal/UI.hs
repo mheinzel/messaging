@@ -58,6 +58,10 @@ handleEvent outgoingChan state = \case
   Input Input.Escape -> Simple.Exit
   Input Input.Tab -> Simple.Transition $ do
     pure $ toggleSidebar state
+  Input (Input.Arrow Input.ArrowUp) -> Simple.Transition $ do
+    pure $ previousConversation state
+  Input (Input.Arrow Input.ArrowDown) -> Simple.Transition $ do
+    pure $ nextConversation state
   Input Input.Enter ->
     case typedCommand state of
       Right (Just CmdQuit) -> Simple.Exit

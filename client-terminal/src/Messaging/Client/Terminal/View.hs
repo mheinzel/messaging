@@ -31,7 +31,7 @@ viewState state
     Widget.SomeWidget $
       Widget.splitRight 26
         |> viewMainWindow borderChars state
-        |> viewSideBar borderChars (_coreState state)
+        |> viewSideBar borderChars state
   | otherwise =
     Widget.SomeWidget $
       viewMainWindow borderChars state
@@ -41,7 +41,7 @@ viewState state
         then Widget.unicodeChars
         else Widget.asciiChars
 
-viewSideBar :: Widget.BorderCharacters -> Core.State -> Widget.Border
+viewSideBar :: Widget.BorderCharacters -> State -> Widget.Border
 viewSideBar borderChars state =
   Widget.border borderChars $
     Widget.padding (Widget.padLeft 1 <> Widget.padRight 1) $
@@ -55,8 +55,8 @@ viewSideBar borderChars state =
           Widget.splitBottom 12
             |> do
               Widget.padding (Widget.padTop 1) $
-                viewConversationList $
-                  Core._conversationName <$> Core._joinedConversations state
+                viewConversationList state $
+                  Core._conversationName <$> Core._joinedConversations (_coreState state)
             |> do
               viewInstructions
 
@@ -77,13 +77,16 @@ viewInstructions =
         "Escape: quit"
       ]
 
-viewConversationList :: Foldable f => f Conv.ConversationName -> Widget.Block
-viewConversationList convs =
+viewConversationList ::
+  Foldable f =>
+  State ->
+  f Conv.ConversationName ->
+  Widget.Block
+viewConversationList state convs =
   Widget.prettyBlock $
     PP.vsep $
-      map renderConversationName (toList convs)
+      map (\convName -> renderConversationName (isFocused convName state) convName) (toList convs)
         <> pure ""
-        <> pure "(just a mockup)"
 
 viewMainWindow :: Widget.BorderCharacters -> State -> Widget.Split
 viewMainWindow borderChars state =
@@ -122,9 +125,15 @@ renderSystemMessage :: Text -> PP.Doc PP.AnsiStyle
 renderSystemMessage =
   PP.annotate (PP.color PP.Cyan) . PP.pretty
 
-renderConversationName :: Conv.ConversationName -> PP.Doc PP.AnsiStyle
-renderConversationName =
-  PP.annotate (PP.color PP.Red) . PP.pretty . ("#" <>) . Conv.conversationNameText
+renderConversationName ::
+  FocusState ->
+  Conv.ConversationName ->
+  PP.Doc PP.AnsiStyle
+renderConversationName focusState =
+  let style = case focusState of
+        Focused -> PP.color PP.Cyan <> PP.bold
+        Unfocused -> PP.color PP.Red
+   in PP.annotate style . PP.pretty . ("#" <>) . Conv.conversationNameText
 
 renderUserName :: User.UserName -> PP.Doc PP.AnsiStyle
 renderUserName =

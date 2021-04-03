@@ -31,6 +31,11 @@ data State = State
 
 makeLenses ''State
 
+data FocusState
+  = Focused
+  | Unfocused
+  deriving (Eq, Show)
+
 currentConversationName :: State -> Maybe Conv.ConversationName
 currentConversationName state =
   List.find
@@ -40,6 +45,11 @@ currentConversationName state =
 currentConversation :: State -> Maybe Core.ConversationState
 currentConversation state =
   currentConversationName state >>= flip Core.conversationState (_coreState state)
+
+isFocused :: Conv.ConversationName -> State -> FocusState
+isFocused name state = case currentConversationName state of
+  Just convName | convName == name -> Focused
+  _ -> Unfocused
 
 handleEditorInput :: Ansi.KeyboardInput -> State -> State
 handleEditorInput input = over editor (Widget.handleInput input)

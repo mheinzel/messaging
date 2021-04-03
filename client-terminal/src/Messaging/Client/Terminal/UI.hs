@@ -7,7 +7,7 @@ import Control.Concurrent (Chan, readChan, writeChan)
 import Data.Bifunctor (first)
 import Data.Text (Text)
 import qualified Data.Text as Text
-import Lens.Micro (over, (^.))
+import Lens.Micro (over)
 import qualified Messaging.Client.Core.State as Core
 import Messaging.Client.Terminal.State
 import Messaging.Client.Terminal.View (viewState)
@@ -67,32 +67,26 @@ handleEvent outgoingChan state = \case
         pure $ resetEditor $ toggleUnicode state
       Right (Just (CmdJoin conv)) -> Simple.Transition $ do
         let convName = Conv.ConversationName conv
-        if hasJoined convName state
-          then pure $ resetEditor state
-          else do
-            writeChan outgoingChan $ Req.JoinConversation convName
-            pure $ resetEditor $ addConversation convName state
+        writeChan outgoingChan $ Req.JoinConversation convName
+        -- already mark this conversation as focussed, so it will be the
+        -- current one once the server adds us to it.
+        pure $ resetEditor $ setConversation convName state
       Right (Just (CmdLeave conv)) -> Simple.Transition $ do
         let convName = Conv.ConversationName conv
-        if hasJoined convName state
-          then do
-            writeChan outgoingChan (Req.LeaveConversation convName)
-            let newConv
-                  | state ^. currentConversation == Just convName = someConversation state
-                  | otherwise = Just convName
-            pure $
-              resetEditor $
-                setConversation newConv $
-                  removeConversation convName state
-          else pure $ resetEditor state
+        writeChan outgoingChan (Req.LeaveConversation convName)
+        pure $ resetEditor state
       Right (Just (CmdSwitch conv)) -> Simple.Transition $ do
         let convName = Conv.ConversationName conv
-        pure $ resetEditor $ setConversation (Just convName) state
+        pure $ resetEditor $ setConversation convName state
       Right (Just (CmdSend txt)) -> Simple.Transition $ do
-        let convName = currentConversationName state
-        let msg = Msg.Message convName txt
-        writeChan outgoingChan (Req.SendMessage msg)
-        pure $ resetEditor state
+        case currentConversationName state of
+          Just convName -> do
+            let msg = Msg.Message convName txt
+            writeChan outgoingChan (Req.SendMessage msg)
+            pure $ resetEditor state
+          Nothing ->
+            -- TODO: display error message
+            pure state
       Right Nothing -> Simple.Transition $ do
         -- Don't send or delete if no command was detected.
         pure state

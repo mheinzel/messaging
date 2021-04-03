@@ -90,7 +90,7 @@ viewMainWindow borderChars state =
         maybe
           (Widget.block "")
           viewConversation
-          (Core.conversationState (currentConversationName state) (_coreState state))
+          (currentConversation state)
     |> do
       Widget.border borderChars $
         _editor state

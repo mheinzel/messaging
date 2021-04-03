@@ -59,9 +59,9 @@ handleEvent outgoingChan state = \case
   Input Input.Tab -> Simple.Transition $ do
     pure $ toggleSidebar state
   Input (Input.Arrow Input.ArrowUp) -> Simple.Transition $ do
-    pure $ previousConversation state
+    pure $ focusPreviousConversation state
   Input (Input.Arrow Input.ArrowDown) -> Simple.Transition $ do
-    pure $ nextConversation state
+    pure $ focusNextConversation state
   Input Input.Enter ->
     case typedCommand state of
       Right (Just CmdQuit) -> Simple.Exit
@@ -74,14 +74,14 @@ handleEvent outgoingChan state = \case
         writeChan outgoingChan $ Req.JoinConversation convName
         -- already mark this conversation as focussed, so it will be the
         -- current one once the server adds us to it.
-        pure $ resetEditor $ setConversation convName state
+        pure $ resetEditor $ focusConversation convName state
       Right (Just (CmdLeave conv)) -> Simple.Transition $ do
         let convName = Conv.ConversationName conv
         writeChan outgoingChan (Req.LeaveConversation convName)
         pure $ resetEditor state
       Right (Just (CmdSwitch conv)) -> Simple.Transition $ do
         let convName = Conv.ConversationName conv
-        pure $ resetEditor $ setConversation convName state
+        pure $ resetEditor $ focusConversation convName state
       Right (Just (CmdSend txt)) -> Simple.Transition $ do
         case currentConversationName state of
           Just convName -> do

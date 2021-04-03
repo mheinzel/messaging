@@ -5,6 +5,7 @@ module Messaging.Client.Terminal.View where
 import qualified Data.Char as Char
 import Data.Foldable (toList)
 import Data.Function (on)
+import qualified Data.Map as Map
 import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Messaging.Client.Core.State as Core
@@ -56,7 +57,7 @@ viewSideBar borderChars state =
             |> do
               Widget.padding (Widget.padTop 1) $
                 viewConversationList state $
-                  Core._conversationName <$> Core._joinedConversations (_coreState state)
+                  Map.keys $ Core._joinedConversations (_coreState state)
             |> do
               viewInstructions
 

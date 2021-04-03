@@ -28,6 +28,7 @@ dependencies:
 - uri-bytestring
 - vector
 - websockets
+- wuss
 
 ghc-options:
 - -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wpartial-fields -Wredundant-constraints

@@ -20,11 +20,14 @@ import Network.Socket (withSocketsDo)
 import qualified Network.WebSockets as WS
 import qualified URI.ByteString as URI
 import qualified URI.ByteString.QQ as URI.QQ
+import qualified Wuss -- secure websockets
 
 -- | The URI subset we currently care about, more strongly typed than just
 -- @String@s and @Int@s.
 data URI = URI
-  { uriHost :: URI.Host,
+  { -- | HTTP or HTTPS?
+    uriSecure :: Bool,
+    uriHost :: URI.Host,
     uriPort :: URI.Port,
     uriPath :: ByteString
   }
@@ -38,21 +41,23 @@ defaultURI =
 
 uriFromAbsolute :: URI.URIRef URI.Absolute -> Either String URI
 uriFromAbsolute URI.URI {URI.uriScheme, URI.uriAuthority, URI.uriPath} = do
-  case URI.schemeBS uriScheme of
-    "http" -> pure ()
+  secure <- case URI.schemeBS uriScheme of
+    "http" -> pure False
+    "https" -> pure True
     other -> Left $ "unsupported scheme: " <> show other
   authority <- note "contains no authority" uriAuthority
-  let port = fromMaybe (URI.Port 80) (URI.authorityPort authority)
-  pure $ URI (URI.authorityHost authority) port uriPath
+  let port = fromMaybe (defaultPort secure) (URI.authorityPort authority)
+  pure $ URI secure (URI.authorityHost authority) port uriPath
   where
     note err = maybe (Left err) Right
+    defaultPort secure = if secure then URI.Port 443 else URI.Port 80
 
 runClientApp ::
   URI ->
   User.UserName ->
   (WS.Connection -> IO a) ->
   IO a
-runClientApp URI {uriHost, uriPort, uriPath} userName client = do
+runClientApp URI {uriSecure, uriHost, uriPort, uriPath} userName client = do
   let host = Text.unpack . Text.decodeUtf8 $ URI.hostBS uriHost
   let port = URI.portNumber uriPort
   let path = Text.unpack . Text.decodeUtf8 $ uriPath
@@ -60,7 +65,9 @@ runClientApp URI {uriHost, uriPort, uriPath} userName client = do
   let headers = Auth.buildHeaders userName
 
   withSocketsDo $
-    WS.runClientWith host port path options headers client
+    if uriSecure
+      then WS.runClientWith host port path options headers client
+      else Wuss.runSecureClientWith host (fromIntegral port) path options headers client
 
 -- IDEA: If we used the async package here, we coul check whether any of the
 -- spawned threads terminated and re-raise the exception in the main thread.

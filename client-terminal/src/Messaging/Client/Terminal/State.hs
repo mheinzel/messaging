@@ -39,7 +39,7 @@ initialState user =
     [Conv.ConversationName "general"] -- fallback
     (Widget.editor "")
     True
-    False
+    True
 
 -- Get ------------------------------------------------------------------------
 

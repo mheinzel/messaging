@@ -22,7 +22,9 @@ dependencies:
 - bytestring
 - containers
 - messaging-shared
-- lens
+- microlens
+- microlens-ghc
+- microlens-th
 - network
 - text
 - uri-bytestring

@@ -2,15 +2,15 @@
 
 module Messaging.Client.Core.State where
 
-import Control.Lens (over)
-import Control.Lens.At (at)
-import Control.Lens.TH (makeLenses)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Vector (Vector)
 import qualified Data.Vector as Vector
+import Lens.Micro (at, over)
+import Lens.Micro.GHC () -- for instance At (Map k b)
+import Lens.Micro.TH (makeLenses)
 import qualified Messaging.Shared.Conversation as Conv
 import qualified Messaging.Shared.Message as Msg
 import qualified Messaging.Shared.Response as Res

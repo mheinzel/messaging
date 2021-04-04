@@ -1,20 +1,23 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Messaging.Shared.Auth
-  ( buildHeaders,
+  ( buildPath,
     Error (..),
-    parseHeaders,
+    parsePath,
   )
 where
 
 import Control.Monad ((<=<))
-import Data.Text.Encoding (decodeUtf8', encodeUtf8)
+import Data.ByteString (ByteString)
+import qualified Data.ByteString.Char8 as BS
+import Data.Maybe (mapMaybe)
+import Data.Text.Encoding (encodeUtf8, decodeUtf8')
 import qualified Messaging.Shared.User as User
-import qualified Network.WebSockets as WS
 
-buildHeaders :: User.UserName -> WS.Headers
-buildHeaders userName =
-  [("UserName", encodeUtf8 (User.userNameText userName))]
+-- Turn @/path@ and @user@ into @/path?userName=user@.
+buildPath :: ByteString -> User.UserName -> ByteString
+buildPath basePath userName =
+  basePath <> "?userName=" <> encodeUtf8 (User.userNameText userName)
 
 data Error
   = MissingUserName
@@ -22,11 +25,24 @@ data Error
   | UserNameTaken
   deriving (Show)
 
-parseHeaders :: WS.Headers -> Either Error User.UserName
-parseHeaders =
+-- | Could be improved, but works for now.
+--
+-- Turn @/path?userName=user@ into @user@.
+parsePath :: ByteString -> Either Error User.UserName
+parsePath =
   addError InvalidUserName . User.mkUserName
     <=< replaceError InvalidUserName . decodeUtf8' -- drop error message
-    <=< addError MissingUserName . lookup "UserName"
+    <=< addError MissingUserName . lookup "userName" . parseQueries
+  where
+    parseQueries :: ByteString -> [(ByteString, ByteString)]
+    parseQueries = mapMaybe parseQuery . BS.split '&' . dropPrefix
+
+    parseQuery :: ByteString -> Maybe (ByteString, ByteString)
+    parseQuery bs = case BS.split '=' bs of
+      [k, v] -> Just (k, v)
+      _ -> Nothing
+
+    dropPrefix = BS.dropWhile (== '?') . BS.dropWhile (/= '?')
 
 addError :: e -> Maybe a -> Either e a
 addError err = maybe (Left err) Right

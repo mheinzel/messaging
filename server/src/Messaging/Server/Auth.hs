@@ -21,7 +21,7 @@ import qualified Network.WebSockets as WS
 
 authenticate :: WS.RequestHead -> App (Either Auth.Error User)
 authenticate req =
-  case Auth.parseHeaders (WS.requestHeaders req) of
+  case Auth.parsePath (WS.requestPath req) of
     Left err -> pure (Left err)
     Right name ->
       claimUserName name >>= \case

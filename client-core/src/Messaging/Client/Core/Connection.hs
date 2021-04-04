@@ -60,9 +60,9 @@ runClientApp ::
 runClientApp URI {uriSecure, uriHost, uriPort, uriPath} userName client = do
   let host = Text.unpack . Text.decodeUtf8 $ URI.hostBS uriHost
   let port = URI.portNumber uriPort
-  let path = Text.unpack . Text.decodeUtf8 $ uriPath
+  let path = Text.unpack . Text.decodeUtf8 $ Auth.buildPath uriPath userName
   let options = WS.defaultConnectionOptions
-  let headers = Auth.buildHeaders userName
+  let headers = []
 
   withSocketsDo $
     if uriSecure

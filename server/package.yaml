@@ -58,7 +58,6 @@ tests:
     - base
     - hspec
     - HUnit
-    - messaging-client-core
     - messaging-server
     - messaging-shared
     - say

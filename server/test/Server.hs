@@ -1,5 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NumericUnderscores #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Server
   ( -- * Setting up server
@@ -31,6 +32,8 @@ import qualified Control.Exception as Exc
 import Data.ByteString.Lazy (toChunks)
 import Data.Foldable (traverse_)
 import Data.Text (Text)
+import qualified Data.Text as Text
+import qualified Data.Text.Encoding as Text (decodeUtf8)
 import qualified Messaging.Server as Server
 import qualified Messaging.Server.App as App
 import qualified Messaging.Server.Log as Log
@@ -81,10 +84,11 @@ mkClient username server = do
   _ <- forkIO $ do
     serverConnection <- WS.makePendingConnectionFromStream serverStream options
     serverApp server serverConnection
-  let headers = Auth.buildHeaders $ User.UserName username
+  let path = Text.unpack . Text.decodeUtf8 $ Auth.buildPath "/" (User.UserName username)
+  let headers = []
   clientConnection <-
     logDeadlocks "clientConnection" $
-      WS.newClientConnection clientStream "example.com" "test" options headers
+      WS.newClientConnection clientStream "example.com" path options headers
   return $ TestClient clientConnection
 
 mkStreams :: IO (Stream, Stream)

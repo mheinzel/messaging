@@ -33,6 +33,7 @@ packages:
 - ansi-terminal-declarative-simple
 - client-core
 - client-gtk
+- client-web
 - client-terminal
 - server
 - shared

@@ -17,23 +17,29 @@ category:            Web
 # common to point users to the README.md file.
 description:         Please see the README on GitHub at <https://github.com/mheinzel/messaging#readme>
 
-dependencies:
-- base >= 4.7 && < 5
-- bytestring
-- containers
-- messaging-shared
-- microlens
-- microlens-ghc
-- microlens-th
-- network
-- text
-- uri-bytestring
-- vector
-- websockets
-- wuss
-
 ghc-options:
 - -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wpartial-fields -Wredundant-constraints
 
 library:
   source-dirs: src
+
+  dependencies:
+  - base >= 4.7 && < 5
+  - bytestring
+  - containers
+  - messaging-shared
+  - microlens
+  - microlens-ghc
+  - microlens-th
+  - text
+  - vector
+
+  when:
+  - condition: "!impl(ghcjs)"
+    dependencies:
+    - network
+    - uri-bytestring
+    - websockets
+    - wuss
+    exposed-modules:
+    - Messaging.Client.Core.Connection

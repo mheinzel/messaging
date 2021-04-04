@@ -9,7 +9,8 @@ import Data.Text (Text)
 import Data.Vector (Vector)
 import qualified Data.Vector as Vector
 import Lens.Micro (at, over)
-import Lens.Micro.GHC () -- for instance At (Map k b)
+-- Imported just to get the instance `At (Map k b)`.
+import Lens.Micro.GHC ()
 import Lens.Micro.TH (makeLenses)
 import qualified Messaging.Shared.Conversation as Conv
 import qualified Messaging.Shared.Message as Msg
@@ -20,7 +21,7 @@ data State = State
   { _currentUser :: User.UserName,
     _joinedConversations :: Map Conv.ConversationName ConversationState
   }
-  deriving (Show)
+  deriving (Eq, Show)
 
 emptyState :: User.UserName -> State
 emptyState user = State user mempty
@@ -29,7 +30,7 @@ data ConversationState = ConversationState
   { _conversationName :: Conv.ConversationName,
     _conversationHistory :: ConversationHistory
   }
-  deriving (Show)
+  deriving (Eq, Show)
 
 emptyConversation :: Conv.ConversationName -> ConversationState
 emptyConversation convName = ConversationState convName $ ConversationHistory Vector.empty
@@ -37,13 +38,13 @@ emptyConversation convName = ConversationState convName $ ConversationHistory Ve
 newtype ConversationHistory = ConversationHistory
   { _historyEntries :: Vector ConversationHistoryEntry
   }
-  deriving (Show)
+  deriving (Eq, Show)
 
 data ConversationHistoryEntry
   = Message User.UserName Text
   | UserJoined User.UserName
   | UserLeft User.UserName
-  deriving (Show)
+  deriving (Eq, Show)
 
 makeLenses ''State
 makeLenses ''ConversationState

@@ -19,11 +19,8 @@ runClient = do
   userName <- case mkUserName (Par._username input) of
         Just userName -> pure userName
         Nothing -> Exit.die "error: invalid user name"
-  uri <- pure $ Par._uri input
-  -- TODO: proper command line argument parser, also read URI.
-  -- Or even allow entering this information in some GUI widget.
-
-
+  let uri = pure $ Par._uri input
+  
   Conn.runClientApp uri userName (client userName)
 
 client :: User.UserName -> WS.ClientApp ()

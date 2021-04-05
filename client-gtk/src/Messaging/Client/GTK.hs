@@ -19,7 +19,7 @@ runClient = do
   userName <- case mkUserName (Par._username input) of
         Just userName -> pure userName
         Nothing -> Exit.die "error: invalid user name"
-  let uri = pure $ Par._uri input
+  uri <- pure $ Par._uri input 
   
   Conn.runClientApp uri userName (client userName)
 

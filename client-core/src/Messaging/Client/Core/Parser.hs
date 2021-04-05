@@ -18,11 +18,12 @@ parseConnectInput = ConnectInput
           ( long "username"
          <> short 'u'
          <> metavar "NAME"
-         <> help "Name for the username" )
+         <> help "Name for the username")
       <*> option uriReadM
           ( long "uri"
          <> metavar "TARGET"
-         <> help "Target is the URI" )
+         <> value Con.defaultURI 
+         <> help "Target is the URI")
 
 textReadM :: ReadM Text
 textReadM = pack <$> readerAsk

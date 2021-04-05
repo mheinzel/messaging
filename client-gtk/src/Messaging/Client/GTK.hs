@@ -10,18 +10,17 @@ import qualified Messaging.Shared.User as User
 import qualified Network.WebSockets as WS
 import qualified System.Environment as Env
 import qualified System.Exit as Exit
+import qualified Messaging.Shared.User as User
+import qualified Messaging.Client.Core.Parser as Par
 
 runClient :: IO ()
 runClient = do
-  -- TODO: proper command line argument parser, also read URI.
-  -- Or even allow entering this information in some GUI widget.
-  userName <- do
-    progName <- Env.getProgName
-    Env.getArgs >>= \case
-      [name] -> case User.mkUserName (Text.pack name) of
+  input <- Par.runParse
+  userName <- case mkUserName (Par._username input) of
         Just userName -> pure userName
         Nothing -> Exit.die "error: invalid user name"
-      _ -> Exit.die $ "usage: " <> progName <> " USERNAME"
+  -- TODO: proper command line argument parser, also read URI.
+  -- Or even allow entering this information in some GUI widget.
 
   let uri = Conn.defaultURI
 

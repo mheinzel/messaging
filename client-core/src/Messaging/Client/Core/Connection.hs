@@ -35,13 +35,15 @@ data URI = URI
 
 defaultURI :: URI
 defaultURI =
-  case uriFromAbsolute [URI.QQ.uri|http://127.0.0.1:8080/|] of
+  case uriFromAbsolute [URI.QQ.uri|ws://127.0.0.1:8080/|] of
     Right uri -> uri
     Left err -> error $ "Unexpected invalid default URI: " <> err
 
 uriFromAbsolute :: URI.URIRef URI.Absolute -> Either String URI
 uriFromAbsolute URI.URI {URI.uriScheme, URI.uriAuthority, URI.uriPath} = do
   secure <- case URI.schemeBS uriScheme of
+    "ws" -> pure False
+    "wss" -> pure True
     "http" -> pure False
     "https" -> pure True
     other -> Left $ "unsupported scheme: " <> show other

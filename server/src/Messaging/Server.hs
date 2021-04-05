@@ -38,7 +38,8 @@ app pending = do
         handleConnection user conn
 
 withAcceptedConnection :: WS.PendingConnection -> (User -> WS.Connection -> App ()) -> App ()
-withAcceptedConnection pending action =
+withAcceptedConnection pending action = do
+  Log.info $ show $ WS.pendingRequest pending
   Auth.authenticate (WS.pendingRequest pending) >>= \case
     Left err -> do
       Log.info $ "authentication failure: " <> show err

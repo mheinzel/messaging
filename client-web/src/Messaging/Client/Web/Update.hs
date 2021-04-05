@@ -7,6 +7,7 @@ import Data.Bifunctor (bimap)
 import qualified Messaging.Client.Core.State as Core
 import Messaging.Client.Web.State
 import qualified Messaging.Shared.Auth as Auth
+import qualified Messaging.Shared.Conversation as Conv
 import qualified Messaging.Shared.Message as Msg
 import qualified Messaging.Shared.Request as Req
 import qualified Messaging.Shared.Response as Res
@@ -29,6 +30,10 @@ data LoginAction
 data ChatAction
   = SendMessage MisoString
   | UpdateEditor MisoString
+  | UpdateNewConversation MisoString
+  | JoinConversation
+  | LeaveConversation Conv.ConversationName
+  | SwitchConversation Conv.ConversationName
 
 updateModel :: Model -> Action -> Miso.Effect Action Model
 updateModel model@(LoggingIn login) = \case
@@ -93,6 +98,19 @@ updateChat chat = \case
         Miso.noEff chat
   UpdateEditor txt ->
     Miso.noEff $ chat {editor = txt}
+  UpdateNewConversation txt ->
+    Miso.noEff $ chat {newConversation = txt}
+  JoinConversation ->
+    case Conv.mkConversationName (fromMisoString $ newConversation chat) of
+      Nothing -> Miso.noEff chat
+      Just conv ->
+        (focusConversation conv chat) {newConversation = mempty} <# do
+          Miso.send $ Req.JoinConversation conv
+  LeaveConversation conv ->
+    chat {newConversation = mempty} <# do
+      Miso.send $ Req.LeaveConversation conv
+  SwitchConversation conv ->
+    Miso.noEff $ focusConversation conv chat
 
 updateChatWebSocket :: Chat -> Miso.WebSocket Res.Response -> Miso.Effect a Chat
 updateChatWebSocket chat = \case

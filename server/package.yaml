@@ -35,6 +35,7 @@ dependencies:
 - unliftio
 - uuid
 - websockets
+- optparse-applicative
 
 ghc-options:
 - -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wpartial-fields -Wredundant-constraints

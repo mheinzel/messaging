@@ -16,12 +16,13 @@ import Messaging.Shared.User (User (userID, userName), UserID, UserName (userNam
 import qualified Network.WebSockets as WS
 import qualified UnliftIO
 import qualified UnliftIO.Exception as Exc
+import Messaging.Server.Parser as Par
 
 runServer :: IO ()
 runServer = do
   state <- initialState
   -- TODO: read from command line args
-  let port = 8080
+  port <- Par.runParse
   let logging = Log.Settings Log.LoggingStderr Log.LevelDebug
   let settings = Settings port logging
   runApp settings state $ do

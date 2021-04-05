@@ -33,6 +33,7 @@ library:
   - microlens-th
   - text
   - vector
+  - optparse-applicative
 
   when:
   - condition: "!impl(ghcjs)"

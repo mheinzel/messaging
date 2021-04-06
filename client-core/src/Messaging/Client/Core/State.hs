@@ -26,11 +26,17 @@ data State = State
 emptyState :: User.UserName -> State
 emptyState user = State user mempty
 
+emptyState :: User.UserName -> State
+emptyState user = State user mempty
+
 data ConversationState = ConversationState
   { _conversationName :: Conv.ConversationName,
     _conversationHistory :: ConversationHistory
   }
   deriving (Eq, Show)
+
+emptyConversation :: Conv.ConversationName -> ConversationState
+emptyConversation convName = ConversationState convName $ ConversationHistory Vector.empty
 
 emptyConversation :: Conv.ConversationName -> ConversationState
 emptyConversation convName = ConversationState convName $ ConversationHistory Vector.empty
@@ -55,6 +61,9 @@ history name = fmap (_historyEntries . _conversationHistory) . conversationState
 
 conversationState :: Conv.ConversationName -> State -> Maybe ConversationState
 conversationState name = Map.lookup name . _joinedConversations
+
+getAllConversationStates :: State -> Vector (Conv.ConversationName, ConversationState)
+getAllConversationStates = Vector.fromList . Map.assocs . _joinedConversations
 
 -- | Modifies the conversation state of the conversation with the given name,
 -- or adds the conversation if it was not present yet and then performs the modification.

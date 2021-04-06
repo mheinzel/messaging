@@ -8,6 +8,7 @@ import Data.Foldable (fold)
 import Data.Text (Text)
 import Data.Vector (Vector)
 import qualified Data.Vector as Vec
+import Debug.Trace (trace)
 import qualified GI.GObject as GI
 import GI.Gtk
   ( Align (..),
@@ -53,14 +54,21 @@ messageBox customAttributes customParams =
       listRows <- mapM toListRow $ messages props
       mapM_ (Gtk.containerAdd msgBox) listRows
 
+      Gtk.widgetShowAll window
       return (window, msgBox)
 
     customPatch :: MessageBoxProps -> MessageBoxProps -> ListBox -> CustomPatch ScrolledWindow ListBox
     customPatch old new msgBox
-      | Just newMsgs <- getNew (messages old) (messages new) = CustomModify $ \_ -> do
-        mapM_ (Gtk.containerAdd msgBox <=< toListRow) newMsgs
+      | new == old = CustomKeep
+      | otherwise = CustomModify $ \window -> do
+        oldRows <- Gtk.containerGetChildren msgBox
+        mapM_ Gtk.widgetDestroy oldRows
+        
+        listRows <- mapM toListRow $ messages new
+        mapM_ (Gtk.containerAdd msgBox) listRows
+        
+        Gtk.widgetShowAll window
         return msgBox
-      | otherwise = CustomKeep
 
     customSubscribe :: MessageBoxProps -> ListBox -> ScrolledWindow -> (MessageBoxEvent -> IO ()) -> IO Subscription
     customSubscribe props _ scrollWindow callback = do
@@ -86,14 +94,12 @@ toListRow msg = do
   Gtk.setLabelWrap label True
   #setXalign label 0.0
   Gtk.containerAdd listBoxRow label
-  Gtk.widgetShow listBoxRow
-  Gtk.widgetShow label
   return listBoxRow
 
 getNew :: (Eq a) => Vector a -> Vector a -> Maybe (Vector a)
 getNew old new
-  | Vec.null old = Just new
   | Vec.null new = Nothing
+  | Vec.null old = Just new
   | Vec.head old == Vec.head new = getNew (Vec.tail old) (Vec.tail new)
   | otherwise = error "This case should not occur?"
 

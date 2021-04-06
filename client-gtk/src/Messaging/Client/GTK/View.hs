@@ -8,10 +8,13 @@ module Messaging.Client.GTK.View where
 
 import Data.Maybe (fromMaybe)
 import Data.Text as Text
+import Data.Vector as Vec
+import Debug.Trace (trace)
 import GI.Gdk (EventKey, getEventKeyString)
 import GI.Gtk
   ( Align (..),
     Box (..),
+    Button (..),
     Entry (..),
     Label (..),
     ListBox (..),
@@ -37,13 +40,13 @@ import qualified Messaging.Shared.User as User
 data Event
   = Inbound Res.Response
   | Outbound Req.Request
-  | StickyMessages Bool
+  | StickyConversation Bool
   | Closed
   | Ignore
 
 data State = State
   { _core :: Core.State,
-    _stickyMessages :: Bool
+    _stickyMsgBox :: Bool
   }
 
 makeLenses ''State
@@ -57,25 +60,42 @@ view st =
       #heightRequest := 600,
       on #deleteEvent (const (True, Closed))
     ]
+    $ notebook [] $
+      trace (show $ Core.getAllConversationStates (_core st)) $
+      (mkConversationPage (st ^. stickyMsgBox) <$> Core.getAllConversationStates (_core st))
+        <> Vec.singleton addConversationPage
+
+addConversationPage :: Page Event
+addConversationPage =
+  page "+" $
+    centered $
+      container
+        Box
+        [#orientation := OrientationHorizontal, #valign := AlignCenter, #spacing := 20]
+        [ BoxChild defaultBoxChildProperties $ widget Label [#label := "Join conversation: "],
+          BoxChild defaultBoxChildProperties $ widget Entry [onM #keyPressEvent newConversationEntryHandler]
+        ]
+
+mkConversationPage :: Bool -> (Conv.ConversationName, Core.ConversationState) -> Page Event
+mkConversationPage sticky (name, convSt) =
+  pageWithTab
+    ( container
+        Box
+        [#orientation := OrientationHorizontal, #spacing := 20]
+        [ widget Label [#label := Conv.conversationNameText name],
+          widget Button [#label := "X", on #clicked (Outbound $ Req.LeaveConversation name)]
+        ]
+    )
     $ container
       Box
       [#orientation := OrientationVertical]
-      [ BoxChild defaultBoxChildProperties {expand = True, fill = True} $
-          mapMsgBoxEvents <$> msgBox,
-        BoxChild defaultBoxChildProperties $
-          widget Entry [onM #keyPressEvent windowKeyPressEventHandler]
+      [ BoxChild defaultBoxChildProperties {expand = True, fill = True} $ mapMsgBoxEvents <$> msgBox,
+        BoxChild defaultBoxChildProperties $ widget Entry [onM #keyPressEvent (conversationEntryHandler name)]
       ]
   where
-    msgBox = messageBox [] (MessageBoxProps msgs (st ^. stickyMessages))
-    msgs = fmap renderHistoryEntry (fromMaybe mempty $ Core.history Conv.conversationNameGeneral $ st ^. core)
-    mapMsgBoxEvents ~(ScrolledToBottom b) = StickyMessages b
-
-viewHistory :: FromWidget (Container ListBox (Children (Bin ListBoxRow))) target => State -> target event
-viewHistory st =
-  container ListBox [#valign := AlignEnd] $
-    (fromMaybe mempty $ Core.history Conv.conversationNameGeneral $ st ^. core) <&> \req ->
-      bin ListBoxRow [#activatable := False, #selectable := False] $
-        widget Label [#label := renderHistoryEntry req]
+    msgBox = messageBox [] (MessageBoxProps msgs sticky)
+    msgs = fmap renderHistoryEntry $ convSt ^. Core.conversationHistory . Core.historyEntries
+    mapMsgBoxEvents ~(ScrolledToBottom b) = StickyConversation b
 
 renderHistoryEntry :: Core.ConversationHistoryEntry -> Text
 renderHistoryEntry (Core.Message user msg) =
@@ -85,8 +105,14 @@ renderHistoryEntry (Core.UserJoined user) =
 renderHistoryEntry (Core.UserLeft user) =
   User.userNameText user <> " LEFT"
 
-windowKeyPressEventHandler :: EventKey -> Entry -> IO (Bool, Event)
-windowKeyPressEventHandler eventKey entry = do
+newConversationEntryHandler :: EventKey -> Entry -> IO (Bool, Event)
+newConversationEntryHandler = entryHandler $ \msg -> Outbound $ Req.JoinConversation $ Conv.ConversationName msg
+
+conversationEntryHandler :: Conv.ConversationName -> EventKey -> Entry -> IO (Bool, Event)
+conversationEntryHandler name = entryHandler $ \msg -> Outbound $ Req.SendMessage $ Msg.Message name msg
+
+entryHandler :: (Text -> Event) -> EventKey -> Entry -> IO (Bool, Event)
+entryHandler handleFun eventKey entry = do
   key <- getEventKeyString eventKey
   case key of
     Just "\ESC" -> return (True, Closed)
@@ -94,9 +120,19 @@ windowKeyPressEventHandler eventKey entry = do
       msg <- entryGetText entry
       entrySetText entry ""
 
-      -- Don't sent empty messages
       if Text.null msg
         then return (True, Ignore)
-        else return (True, Outbound $ Req.SendMessage $ Msg.Message Conv.conversationNameGeneral msg)
-    Just _ -> return (False, Ignore)
+        else return (True, handleFun msg)
     _ -> return (False, Ignore)
+
+centered :: Widget e -> Widget e
+centered w =
+  container
+    Box
+    [#orientation := OrientationVertical]
+    [ BoxChild defaultBoxChildProperties {expand = True, padding = 10} $
+        container
+          Box
+          [#orientation := OrientationHorizontal]
+          [BoxChild defaultBoxChildProperties {expand = True, padding = 10} w]
+    ]

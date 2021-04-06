@@ -26,17 +26,11 @@ data State = State
 emptyState :: User.UserName -> State
 emptyState user = State user mempty
 
-emptyState :: User.UserName -> State
-emptyState user = State user mempty
-
 data ConversationState = ConversationState
   { _conversationName :: Conv.ConversationName,
     _conversationHistory :: ConversationHistory
   }
   deriving (Eq, Show)
-
-emptyConversation :: Conv.ConversationName -> ConversationState
-emptyConversation convName = ConversationState convName $ ConversationHistory Vector.empty
 
 emptyConversation :: Conv.ConversationName -> ConversationState
 emptyConversation convName = ConversationState convName $ ConversationHistory Vector.empty

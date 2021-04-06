@@ -8,7 +8,6 @@ import GI.Gtk (Window)
 import GI.Gtk.Declarative.App.Simple (App (..), Transition (Exit, Transition), run)
 import Lens.Micro ((%~), (&), (.~))
 import qualified Messaging.Client.Core.State as Core
-import qualified Messaging.Client.GTK.UI.MessageBox as MsgBox
 import Messaging.Client.GTK.View (Event (..))
 import qualified Messaging.Client.GTK.View as View
 import qualified Messaging.Shared.Request as Req

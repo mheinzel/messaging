@@ -3,12 +3,10 @@
 
 module Messaging.Client.GTK.UI.MessageBox where
 
-import Control.Monad ((<=<))
 import Data.Foldable (fold)
 import Data.Text (Text)
 import Data.Vector (Vector)
 import qualified Data.Vector as Vec
-import Debug.Trace (trace)
 import qualified GI.GObject as GI
 import GI.Gtk
   ( Align (..),
@@ -63,10 +61,10 @@ messageBox customAttributes customParams =
       | otherwise = CustomModify $ \window -> do
         oldRows <- Gtk.containerGetChildren msgBox
         mapM_ Gtk.widgetDestroy oldRows
-        
+
         listRows <- mapM toListRow $ messages new
         mapM_ (Gtk.containerAdd msgBox) listRows
-        
+
         Gtk.widgetShowAll window
         return msgBox
 

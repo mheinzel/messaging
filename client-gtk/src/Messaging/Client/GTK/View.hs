@@ -6,10 +6,8 @@
 
 module Messaging.Client.GTK.View where
 
-import Data.Maybe (fromMaybe)
 import Data.Text as Text
 import Data.Vector as Vec
-import Debug.Trace (trace)
 import GI.Gdk (EventKey, getEventKeyString)
 import GI.Gtk
   ( Align (..),
@@ -17,8 +15,6 @@ import GI.Gtk
     Button (..),
     Entry (..),
     Label (..),
-    ListBox (..),
-    ListBoxRow (..),
     Orientation (..),
     Window (..),
     entryGetText,
@@ -26,8 +22,7 @@ import GI.Gtk
   )
 import GI.Gtk.Declarative
 import GI.Gtk.Declarative.App.Simple (AppView)
-import GI.Gtk.Declarative.Container.Class (Children)
-import Lens.Micro ((<&>), (^.))
+import Lens.Micro ((^.))
 import Lens.Micro.TH
 import qualified Messaging.Client.Core.State as Core
 import Messaging.Client.GTK.UI.MessageBox (MessageBoxEvent (..), MessageBoxProps (..), messageBox)
@@ -61,7 +56,6 @@ view st =
       on #deleteEvent (const (True, Closed))
     ]
     $ notebook [] $
-      trace (show $ Core.getAllConversationStates (_core st)) $
       (mkConversationPage (st ^. stickyMsgBox) <$> Core.getAllConversationStates (_core st))
         <> Vec.singleton addConversationPage
 

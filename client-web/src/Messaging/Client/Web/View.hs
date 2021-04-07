@@ -34,13 +34,24 @@ viewModel model =
 
 viewSidebar :: Model -> View Action
 viewSidebar model =
-  div_ [class_ "box", style_ $ Map.singleton "width" "360px"] $
-    [ h4_
-        [class_ "title is-4"]
-        [text "Messaging Web Client"],
-      h6_
-        [class_ "subtitle is-6"]
-        [a_ [href_ "https://github.com/mheinzel/messaging"] [text "(GitHub)"]],
+  div_ [class_ "box", style_ $ Map.singleton "width" "380px"] $
+    [ h3_ [class_ "title is-3 has-text-centered"] $
+        [ a_
+            [ href_ "https://github.com/mheinzel/messaging",
+              style_ $ Map.singleton "color" "#00d1b2"
+            ]
+            [text "Messaging"],
+          text " Web Client"
+        ],
+      h6_ [class_ "subtitle is-6 has-text-centered"] $
+        [ text "Built using ",
+          a_ [href_ "https://github.com/ghcjs/ghcjs"] [text "GHCJS"],
+          text ", ",
+          a_ [href_ "https://haskell-miso.org/"] [text "Miso"],
+          text " and ",
+          a_ [href_ "https://bulma.io/"] [text "Bulma"],
+          text "."
+        ],
       case model of
         Chatting chat ->
           maybe NoOp ChatAction <$> viewConversationNames chat
@@ -190,7 +201,7 @@ viewConversationName focusedConv convName =
     then
       div_
         [ class_ "panel-block is-active has-background-danger-light",
-          style_ $ Map.singleton "whitespace" "nowrap"
+          style_ $ Map.singleton "white-space" "nowrap"
         ]
         [ p_ [class_ "control"] $
             [ button_
@@ -204,7 +215,7 @@ viewConversationName focusedConv convName =
     else
       a_
         [ class_ "panel-block",
-          style_ $ Map.singleton "whitespace" "nowrap",
+          style_ $ Map.singleton "white-space" "nowrap",
           onClick $ Just $ SwitchConversation convName
         ]
         [ p_ [class_ "control"] $

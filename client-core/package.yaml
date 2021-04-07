@@ -44,3 +44,4 @@ library:
     - wuss
     exposed-modules:
     - Messaging.Client.Core.Connection
+    - Messaging.Client.Core.Parser

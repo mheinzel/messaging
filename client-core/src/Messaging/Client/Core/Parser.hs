@@ -28,7 +28,7 @@ parseConnectInput =
       uriReadM
       ( long "uri"
           <> metavar "URI"
-          <> showDefaultWith showURI
+          <> showDefaultWith (const Con.showDefaultURI) -- hardcoded string
           <> value Con.defaultURI
           <> help "Specifies what the client should connect to"
       )
@@ -60,10 +60,4 @@ runParse =
           <> header "Starts a local client."
       )
 
-showURI :: Con.URI -> String
-showURI uri =
-  show (Con.uriHost uri) ++ " on " ++ show (Con.uriPort uri)
-    ++ " has security: "
-    ++ show (Con.uriSecure uri)
-    ++ " on path: "
-    ++ show (Con.uriPath uri)
+

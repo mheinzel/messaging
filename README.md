@@ -1,5 +1,7 @@
 # messaging
 
+![screenshot terminal client](img/screenshot-client-terminal.png)
+
 A real-time chat application.
 Users can connect under a username, join and leave conversations,
 and send messages that all other conversation members will receive.
@@ -55,3 +57,9 @@ Most components are straight-forward to build using [Stack](https://docs.haskell
 However, the GTK client requires GTK to be installed on your system and the web client is best built using Nix.
 
 Please check the individual executables' own READMEs for details.
+
+### More screenshots
+
+![screenshot gtk client](img/screenshot-client-gtk.png)
+
+![screenshot web client](img/screenshot-client-web.png)

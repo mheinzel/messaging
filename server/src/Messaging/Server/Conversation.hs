@@ -25,15 +25,20 @@ import Messaging.Shared.User (User (userID), UserID)
 
 addToConversation :: User -> ConversationName -> App ()
 addToConversation user convName = do
-  convs <- asks activeConversations
-  let newConv = Conversation convName (Set.singleton $ userID user)
-  liftIO $
-    atomically $ do
-      -- insert if there, merge if already existing
-      modifyTVar convs (Map.insertWith addUser convName newConv)
+  tConvs <- asks activeConversations
+  convs <- liftIO $ readTVarIO tConvs
+  if not $ hasJoinedExistingConv user convs convName
+    then do
+      let newConv = Conversation convName (Set.singleton $ userID user)
+      liftIO $
+        atomically $ do
+          -- insert if there, merge if already existing
+          modifyTVar tConvs (Map.insertWith addUser convName newConv)
 
-  -- also announce arrival
-  broadCastJoined user convName
+      -- also announce arrival
+      broadCastJoined user convName
+    else -- don't do anything if the user has already joined
+      pure ()
   where
     addUser :: Conversation -> Conversation -> Conversation
     addUser new old =
@@ -42,16 +47,16 @@ addToConversation user convName = do
 removeFromConversation :: User -> ConversationName -> App ()
 removeFromConversation user convName = do
   -- also announce leaving
-  members <- getConversationMembers convName
+  tConvs <- asks activeConversations
+  convs <- liftIO $ readTVarIO tConvs
   when
-    (userID user `elem` members)
+    (hasJoinedExistingConv user convs convName)
     $ broadcastLeft user convName
 
-  convs <- asks activeConversations
   liftIO $
     atomically $ do
       -- remove conversation if now empty
-      modifyTVar convs (Map.update (removeUser user) convName)
+      modifyTVar tConvs (Map.update (removeUser user) convName)
   where
     removeUser :: User -> Conversation -> Maybe Conversation
     removeUser u old =
@@ -97,3 +102,6 @@ getConversationMembers convName = do
 
 hasJoined :: User -> Conversation -> Bool
 hasJoined user = Set.member (userID user) . conversationMembers
+
+hasJoinedExistingConv :: User -> Map.Map ConversationName Conversation -> ConversationName -> Bool
+hasJoinedExistingConv user convs = maybe False (hasJoined user) . flip Map.lookup convs

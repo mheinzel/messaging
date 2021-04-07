@@ -25,15 +25,22 @@ import Messaging.Shared.User (User (userID), UserID)
 
 addToConversation :: User -> ConversationName -> App ()
 addToConversation user convName = do
-  convs <- asks activeConversations
-  let newConv = Conversation convName (Set.singleton $ userID user)
-  liftIO $
-    atomically $ do
-      -- insert if there, merge if already existing
-      modifyTVar convs (Map.insertWith addUser convName newConv)
+  tConvs <- asks activeConversations
+  convs <- liftIO $ readTVarIO tConvs
+  let joined = case Map.lookup convName convs of
+        Nothing -> False
+        Just conv -> hasJoined user conv
+  if not joined
+    then do
+      let newConv = Conversation convName (Set.singleton $ userID user)
+      liftIO $
+        atomically $ do
+          -- insert if there, merge if already existing
+          modifyTVar tConvs (Map.insertWith addUser convName newConv)
 
-  -- also announce arrival
-  broadCastJoined user convName
+      -- also announce arrival
+      broadCastJoined user convName
+    else pure ()
   where
     addUser :: Conversation -> Conversation -> Conversation
     addUser new old =

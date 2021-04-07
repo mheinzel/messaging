@@ -1,6 +1,10 @@
-# messaging-client
+# messaging-client-web
+
+Uses GHCJS and Miso to generate a JavaScript client. CSS is done using [Bulma](https://bulma.io/).
 
 ### Build instructions
+
+The easiest way to use GHCJS is probably using the [Nix package manager](https://nixos.org/).
 
 Optionally you can use a binary cache to avoid building GHCJS from source:
 

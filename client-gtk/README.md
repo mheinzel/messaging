@@ -1,15 +1,19 @@
-# messaging-client
+# messaging-client-gtk
 
+A basic cross-platform GTK client.
 
+### Build instructions
 
+```
+stack build messaging-client-gtk
+stack run messaging-client-gtk-exe -- --help
+```
 
+But first you need to set up the GTK dependencies on your system.
 
+#### Windows GTK setup
 
-
-
-# Building the GTK client on windows.
-
-Install stack if not done already.
+Install Stack if not done already.
 We will need MSYS2, install by following the steps given at https://msys2.org.
 Install the packages needed for the GTK client by running the follwing in the msys2 console:
 `pacman -S -q --noconfirm mingw64/mingw-w64-x86_64-pkg-config mingw64/mingw-w64-x86_64-gobject-introspection mingw64/mingw-w64-x86_64-gtksourceview3`
@@ -45,7 +49,7 @@ After building, if you want to run the GTK version call the following commands.
 SET PATH=C:\msys64\mingw64\bin;C:\msys64\usr\bin;%PATH%
 SET PKG_CONFIG_PATH=C:\msys64\mingw64\lib\pkgconfig
 SET XDG_DATA_DIRS=C:\msys64\mingw64\share
-stack run messaging-client-gtk-exe "username"
+stack run messaging-client-gtk-exe -- --help
 ```
 
 The first three commands need to be run once each time you start a new cmd console, when dealing with GTK.

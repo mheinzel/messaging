@@ -10,7 +10,6 @@ import qualified Network.WebSockets as WS
 
 runClient :: IO ()
 runClient = do
-  -- TODO: proper command line argument parser, also read URI
   input <- Par.runParse
   let userName = Par._username input
 

@@ -12,9 +12,7 @@ import qualified Messaging.Client.Core.Parser as Par
 runClient :: IO ()
 runClient = do
   input <- Par.runParse
-  userName <- case User.mkUserName (Par._username input) of
-        Just userName -> pure userName
-        Nothing -> Exit.die "error: invalid user name"
+  userName <- pure $ Par._username input
   
   Conn.runClientApp (Par._uri input) userName (client userName)
 

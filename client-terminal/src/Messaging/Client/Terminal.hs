@@ -13,9 +13,7 @@ runClient :: IO ()
 runClient = do
   -- TODO: proper command line argument parser, also read URI
   input <- Par.runParse
-  userName <- case mkUserName (Par._username input) of
-        Just userName -> pure userName
-        Nothing -> Exit.die "error: invalid user name"
+  userName <- pure $ Par._username input
 
   Conn.runClientApp (Par._uri input) userName (client userName)
 

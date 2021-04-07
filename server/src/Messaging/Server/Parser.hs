@@ -6,12 +6,13 @@ parsePort :: Parser Int
 parsePort = option auto
           ( long "port"
          <> short 'p'
-         <> metavar "TARGET"
+         <> metavar "PORT"
+         <> showDefault
          <> value 8080
-         <> help "Target is the port")
+         <> help "Port where the server offers its websocket interface")
 
 runParse :: IO Int
 runParse = execParser $ info (parsePort <**> helper)
             ( fullDesc
-     <> progDesc "Parses the port"
-     <> header "Takes an int to use as a port after --port or -p" )
+     <> progDesc "Messaging server"
+     <> header "Sets up a local server." )

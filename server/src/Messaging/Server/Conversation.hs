@@ -27,8 +27,7 @@ addToConversation :: User -> ConversationName -> App ()
 addToConversation user convName = do
   tConvs <- asks activeConversations
   convs <- liftIO $ readTVarIO tConvs
-  let joined = maybe False (hasJoined user) (Map.lookup convName convs)
-  if not joined
+  if not $ hasJoinedExistingConv user convs convName
     then do
       let newConv = Conversation convName (Set.singleton $ userID user)
       liftIO $
@@ -48,16 +47,16 @@ addToConversation user convName = do
 removeFromConversation :: User -> ConversationName -> App ()
 removeFromConversation user convName = do
   -- also announce leaving
-  members <- getConversationMembers convName
+  tConvs <- asks activeConversations
+  convs <- liftIO $ readTVarIO tConvs
   when
-    (userID user `elem` members)
+    (hasJoinedExistingConv user convs convName)
     $ broadcastLeft user convName
 
-  convs <- asks activeConversations
   liftIO $
     atomically $ do
       -- remove conversation if now empty
-      modifyTVar convs (Map.update (removeUser user) convName)
+      modifyTVar tConvs (Map.update (removeUser user) convName)
   where
     removeUser :: User -> Conversation -> Maybe Conversation
     removeUser u old =
@@ -103,3 +102,6 @@ getConversationMembers convName = do
 
 hasJoined :: User -> Conversation -> Bool
 hasJoined user = Set.member (userID user) . conversationMembers
+
+hasJoinedExistingConv :: User -> Map.Map ConversationName Conversation -> ConversationName -> Bool
+hasJoinedExistingConv user convs = maybe False (hasJoined user) . flip Map.lookup convs

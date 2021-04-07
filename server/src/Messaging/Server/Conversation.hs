@@ -49,10 +49,6 @@ addToConversation user convName = do
 removeFromConversation :: User -> ConversationName -> App ()
 removeFromConversation user convName = do
   -- also announce leaving
-
-  {-
-  broadcastLeft user convName
-  -}
   members <- getConversationMembers convName
   when
     (userID user `elem` members)
@@ -75,8 +71,7 @@ removeFromAllConversations :: User -> App ()
 removeFromAllConversations user = do
   tConvs <- asks activeConversations
   convs <- liftIO $ readTVarIO tConvs
-  let joinedConvs = convs -- Map.filter (hasJoined user) convs
-  mapM_ (removeFromConversation user) (Map.keys joinedConvs)
+  mapM_ (removeFromConversation user) (Map.keys convs)
 
 broadcastMessage :: User -> Message -> App ()
 broadcastMessage user msg =

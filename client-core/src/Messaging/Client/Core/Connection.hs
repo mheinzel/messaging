@@ -40,9 +40,8 @@ defaultURI =
     Left err -> error $ "Unexpected invalid default URI: " <> err
 
 -- This should match the defaultURI function
-showDefaultURI :: String 
+showDefaultURI :: String
 showDefaultURI = "ws://127.0.0.1:8080/"
-
 
 uriFromAbsolute :: URI.URIRef URI.Absolute -> Either String URI
 uriFromAbsolute URI.URI {URI.uriScheme, URI.uriAuthority, URI.uriPath} = do

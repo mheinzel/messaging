@@ -5,7 +5,6 @@ import Data.Text (pack)
 import qualified Messaging.Client.Core.Connection as Con
 import qualified Messaging.Shared.User as User
 import Options.Applicative
-import Options.Applicative.Types (readerAsk)
 import qualified URI.ByteString as URI
 
 -- | Stores the inputs given at connection
@@ -34,20 +33,22 @@ parseConnectInput =
       )
 
 userReadM :: ReadM User.UserName
-userReadM = stringToUsername <$> readerAsk
+userReadM = eitherReader stringToUsername
 
-stringToUsername :: String -> User.UserName
+stringToUsername :: String -> Either String User.UserName
 stringToUsername s = case User.mkUserName (pack s) of
-  Just userName -> userName
-  Nothing -> error "error: invalid user name"
+  Just userName -> Right userName
+  Nothing -> Left "error: invalid user name"
 
 uriReadM :: ReadM Con.URI
 uriReadM = eitherReader stringToUri
 
 stringToUri :: String -> Either String Con.URI
-stringToUri s = Con.uriFromAbsolute uriLoc
-  where
-    uriLoc = either (error . show) id (URI.parseURI URI.laxURIParserOptions (Byte.pack s))
+stringToUri s = case URI.parseURI URI.laxURIParserOptions (Byte.pack s) of
+  Left err -> Left (show err)
+  Right uriA -> case Con.uriFromAbsolute uriA of
+    Left err -> Left err
+    Right uri -> Right uri
 
 -- | Parses the command line arguments and returns a record with the connection info
 runParse :: IO ConnectInput
@@ -59,5 +60,3 @@ runParse =
           <> progDesc "Messaging client"
           <> header "Starts a local client."
       )
-
-

@@ -23,7 +23,7 @@ data Action
   | NoOp
 
 data LoginAction
-  = UpdateBackendUrl MisoString
+  = UpdateServerUrl MisoString
   | UpdateUserName MisoString
   | StartLogin
 
@@ -71,8 +71,8 @@ updateModel model@(Chatting chat) = \case
 
 updateLogin :: Login -> LoginAction -> Miso.Effect Action (Either Login Waiting)
 updateLogin login = \case
-  UpdateBackendUrl txt ->
-    Miso.noEff $ Left $ login {backendUrl = txt}
+  UpdateServerUrl txt ->
+    Miso.noEff $ Left $ login {serverUrl = txt}
   UpdateUserName txt ->
     Miso.noEff $ Left $ login {userName = txt}
   StartLogin ->
@@ -80,7 +80,7 @@ updateLogin login = \case
       Nothing ->
         Miso.noEff $ Left login
       Just name -> do
-        let baseUrl = fromMisoString (backendUrl login)
+        let baseUrl = fromMisoString (serverUrl login)
         let url = Miso.URL $ toMisoString $ Auth.buildPath baseUrl name
         Miso.effectSub (Right (initialWaiting name)) $
           Miso.websocketSub url (Miso.Protocols []) HandleWebsocket

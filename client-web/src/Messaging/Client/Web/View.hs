@@ -83,13 +83,13 @@ viewLoginBox :: Login -> View (Maybe LoginAction)
 viewLoginBox login =
   div_ [class_ "box"] $
     [ div_ [class_ "field"] $
-        [ label_ [class_ "label"] [text "Backend URL"],
+        [ label_ [class_ "label"] [text "Server URL"],
           p_ [class_ "control"] $
             [ input_
                 [ class_ "input",
                   type_ "url",
-                  value_ (backendUrl login),
-                  onInput $ Just . UpdateBackendUrl,
+                  value_ (serverUrl login),
+                  onInput $ Just . UpdateServerUrl,
                   onEnter StartLogin
                 ]
             ]

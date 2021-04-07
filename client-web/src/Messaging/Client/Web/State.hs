@@ -16,7 +16,7 @@ data Model
   deriving (Eq, Show)
 
 data Login = Login
-  { backendUrl :: MisoString,
+  { serverUrl :: MisoString,
     userName :: MisoString,
     errors :: [MisoString]
   }

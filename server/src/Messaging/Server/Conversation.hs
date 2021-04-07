@@ -27,9 +27,7 @@ addToConversation :: User -> ConversationName -> App ()
 addToConversation user convName = do
   tConvs <- asks activeConversations
   convs <- liftIO $ readTVarIO tConvs
-  let joined = case Map.lookup convName convs of
-        Nothing -> False
-        Just conv -> hasJoined user conv
+  let joined = maybe False (hasJoined user) (Map.lookup convName convs)
   if not joined
     then do
       let newConv = Conversation convName (Set.singleton $ userID user)
@@ -40,7 +38,8 @@ addToConversation user convName = do
 
       -- also announce arrival
       broadCastJoined user convName
-    else pure ()
+    else -- don't do anything if the user has already joined
+      pure ()
   where
     addUser :: Conversation -> Conversation -> Conversation
     addUser new old =

@@ -5,12 +5,13 @@ module Messaging.Server where
 
 import Control.Monad (forever)
 import Control.Monad.Trans (MonadIO (liftIO))
-import Messaging.Server.App (App, Settings (..), initialState, runApp)
+import Messaging.Server.App (App, Settings (..), runApp)
 import qualified Messaging.Server.Auth as Auth
 import qualified Messaging.Server.Conversation as Conv
 import qualified Messaging.Server.Delivery as Delivery
 import qualified Messaging.Server.Log as Log
 import Messaging.Server.Parser as Par
+import qualified Messaging.Server.State as State
 import Messaging.Shared.Conversation (conversationNameGeneral)
 import qualified Messaging.Shared.Request as Req
 import Messaging.Shared.User (User (userID, userName), UserID, UserName (userNameText))
@@ -20,7 +21,7 @@ import qualified UnliftIO.Exception as Exc
 
 runServer :: IO ()
 runServer = do
-  state <- initialState
+  state <- State.initialState
   port <- Par.runParse
   let logging = Log.Settings Log.LoggingStderr Log.LevelDebug
   let settings = Settings port logging

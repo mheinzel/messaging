@@ -37,6 +37,7 @@ import qualified Data.Text.Encoding as Text (decodeUtf8)
 import qualified Messaging.Server as Server
 import qualified Messaging.Server.App as App
 import qualified Messaging.Server.Log as Log
+import qualified Messaging.Server.State as State
 import qualified Messaging.Shared.Auth as Auth
 import qualified Messaging.Shared.Conversation as Conv
 import qualified Messaging.Shared.Message as Msg
@@ -58,10 +59,10 @@ newtype TestServer = TestServer
 
 withServer :: (TestServer -> IO ()) -> IO ()
 withServer f = do
-  state <- App.initialState
+  state <- State.initialState
   f $ TestServer (app testSettings state)
   where
-    app :: App.Settings -> App.State -> WS.ServerApp
+    app :: App.Settings -> State.State -> WS.ServerApp
     app settings state pending =
       App.runApp settings state $
         Server.withAcceptedConnection pending Server.handleConnection

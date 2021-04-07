@@ -4,17 +4,13 @@
 
 module Messaging.Server.App where
 
-import Control.Concurrent.STM (TVar, newTVarIO)
+import Control.Concurrent.STM (STM, atomically)
 import Control.Monad.Logger (LoggingT, MonadLogger)
-import Control.Monad.Reader.Class (MonadReader)
-import Control.Monad.Trans (MonadIO)
+import Control.Monad.Reader.Class (MonadReader (ask))
+import Control.Monad.Trans (MonadIO (liftIO))
 import Control.Monad.Trans.Reader (ReaderT, runReaderT)
-import Data.Map.Strict (Map)
-import Data.Set (Set)
 import qualified Messaging.Server.Log as Log
-import Messaging.Shared.Conversation (ConversationName)
-import Messaging.Shared.User (User, UserID, UserName)
-import qualified Network.WebSockets as WS
+import Messaging.Server.State (State)
 import UnliftIO (MonadUnliftIO)
 
 newtype App a = App {unApp :: ReaderT State (LoggingT IO) a}
@@ -30,23 +26,7 @@ data Settings = Settings
     logSettings :: Log.Settings
   }
 
-data State = State
-  { activeConversations :: TVar (Map ConversationName Conversation),
-    connectedUsers :: TVar (Map UserID WS.Connection),
-    users :: TVar (Map UserID User),
-    takenUserNames :: TVar (Set UserName)
-  }
-
-data Conversation = Conversation
-  { conversationName :: ConversationName,
-    conversationMembers :: Set UserID
-  }
-  deriving stock (Show)
-
-initialState :: IO State
-initialState =
-  State
-    <$> newTVarIO mempty
-    <*> newTVarIO mempty
-    <*> newTVarIO mempty
-    <*> newTVarIO mempty
+runAtomically :: (State -> STM a) -> App a
+runAtomically stm = do
+  state <- ask
+  liftIO $ atomically $ stm state

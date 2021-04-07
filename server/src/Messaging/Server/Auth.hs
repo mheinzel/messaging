@@ -14,7 +14,8 @@ import Control.Monad.Reader.Class (asks)
 import Control.Monad.Trans (liftIO)
 import qualified Data.Set as S (delete, insert, member)
 import qualified Data.UUID.V4 as UUID
-import Messaging.Server.App (App, takenUserNames)
+import Messaging.Server.App (App)
+import qualified Messaging.Server.State as State
 import Messaging.Shared.Auth as Auth
 import Messaging.Shared.User (User (User), UserID (UserID), UserName)
 import qualified Network.WebSockets as WS
@@ -35,19 +36,17 @@ data ClaimResult = SuccessfullyClaimed | AlreadyTaken
 
 claimUserName :: UserName -> App ClaimResult
 claimUserName name = do
-  takenNames <- asks takenUserNames
-  liftIO $
-    atomically $ do
-      names <- readTVar takenNames
-      if S.member name names
-        then return AlreadyTaken
-        else do
-          modifyTVar takenNames (S.insert name)
-          return SuccessfullyClaimed
+  takenNames <- asks State.takenUserNames
+  liftIO . atomically $ do
+    names <- readTVar takenNames
+    if S.member name names
+      then return AlreadyTaken
+      else do
+        modifyTVar takenNames (S.insert name)
+        return SuccessfullyClaimed
 
 freeUserName :: UserName -> App ()
 freeUserName name = do
-  takenNames <- asks takenUserNames
-  liftIO $
-    atomically $ do
-      modifyTVar takenNames $ S.delete name
+  takenNames <- asks State.takenUserNames
+  liftIO . atomically $ do
+    modifyTVar takenNames $ S.delete name

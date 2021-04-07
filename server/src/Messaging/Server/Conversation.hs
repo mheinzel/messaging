@@ -8,72 +8,53 @@ module Messaging.Server.Conversation
   )
 where
 
-import Control.Concurrent.STM (atomically, modifyTVar, readTVarIO)
 import Control.Monad (when)
-import Control.Monad.Reader.Class (asks)
-import Control.Monad.Trans (MonadIO (liftIO))
-import Data.Foldable (toList)
-import qualified Data.Map.Strict as Map
-import qualified Data.Set as Set
-import Messaging.Server.App (App, Conversation (Conversation, conversationMembers), activeConversations)
+import Data.Foldable (for_)
+import Messaging.Server.App (App, runAtomically)
 import qualified Messaging.Server.Delivery as Delivery
 import qualified Messaging.Server.Log as Log
+import qualified Messaging.Server.State as State
 import Messaging.Shared.Conversation (ConversationName (conversationNameText))
-import Messaging.Shared.Message (Message (..))
+import Messaging.Shared.Message (Message)
+import qualified Messaging.Shared.Message as Message
 import qualified Messaging.Shared.Response as Res
-import Messaging.Shared.User (User (userID), UserID)
+import Messaging.Shared.User (User)
 
+-- | Also announce arrival.
 addToConversation :: User -> ConversationName -> App ()
 addToConversation user convName = do
-  tConvs <- asks activeConversations
-  convs <- liftIO $ readTVarIO tConvs
-  if not $ hasJoinedExistingConv user convs convName
-    then do
-      let newConv = Conversation convName (Set.singleton $ userID user)
-      liftIO $
-        atomically $ do
-          -- insert if there, merge if already existing
-          modifyTVar tConvs (Map.insertWith addUser convName newConv)
+  change <- runAtomically $ \state -> do
+    State.addToConversation state user convName
+  when (change == State.Changed) $
+    broadCastJoined user convName
 
-      -- also announce arrival
-      broadCastJoined user convName
-    else -- don't do anything if the user has already joined
-      pure ()
-  where
-    addUser :: Conversation -> Conversation -> Conversation
-    addUser new old =
-      old {conversationMembers = conversationMembers new <> conversationMembers old}
-
+-- | First announce leaving, *then* remove from conversation
+-- (so the user still gets a confirmation of being removed).
 removeFromConversation :: User -> ConversationName -> App ()
 removeFromConversation user convName = do
-  -- also announce leaving
-  tConvs <- asks activeConversations
-  convs <- liftIO $ readTVarIO tConvs
-  when
-    (hasJoinedExistingConv user convs convName)
-    $ broadcastLeft user convName
+  wasMember <- runAtomically $ \state -> do
+    State.isMemberOfConversation state convName user
+  when wasMember $
+    broadcastLeft user convName
 
-  liftIO $
-    atomically $ do
-      -- remove conversation if now empty
-      modifyTVar tConvs (Map.update (removeUser user) convName)
-  where
-    removeUser :: User -> Conversation -> Maybe Conversation
-    removeUser u old =
-      let newMembers = Set.delete (userID u) (conversationMembers old)
-       in if Set.null newMembers
-            then Nothing
-            else Just (old {conversationMembers = newMembers})
+  runAtomically $ \state -> do
+    State.removeFromConversation state user convName
 
+-- | Only announce after user is removed (assuming user disconnected).
 removeFromAllConversations :: User -> App ()
 removeFromAllConversations user = do
-  tConvs <- asks activeConversations
-  convs <- liftIO $ readTVarIO tConvs
-  mapM_ (removeFromConversation user) (Map.keys convs)
+  convs <- runAtomically $ \state ->
+    State.getUserConversations state user
+  for_ convs $ \convName -> do
+    runAtomically $ \state ->
+      State.removeFromConversation state user convName
+    broadcastLeft user convName
+
+-- broadcasting ---------------------------------------------------------------
 
 broadcastMessage :: User -> Message -> App ()
 broadcastMessage user msg =
-  broadcast (messageConversation msg) $ Res.ReceivedMessage user msg
+  broadcast (Message.messageConversation msg) $ Res.ReceivedMessage user msg
 
 broadCastJoined :: User -> ConversationName -> App ()
 broadCastJoined user conv =
@@ -86,22 +67,8 @@ broadcastLeft user conv =
 broadcast :: ConversationName -> Res.Response -> App ()
 broadcast convName response = do
   Log.debug $ conversationNameText convName <> ": " <> Res.serializeToText response
-
-  users <- getConversationMembers convName
+  users <- runAtomically $ \state ->
+    State.getConversationMembers state convName
   _missing <- Delivery.deliver users response
-  -- TODO: remove missing users from conversation
+  -- TODO: remove missing users from conversation?
   pure ()
-
-getConversationMembers :: ConversationName -> App [UserID]
-getConversationMembers convName = do
-  convs <- asks activeConversations
-  convMap <- liftIO $ readTVarIO convs
-  pure $ case Map.lookup convName convMap of
-    Nothing -> []
-    Just c -> toList (conversationMembers c)
-
-hasJoined :: User -> Conversation -> Bool
-hasJoined user = Set.member (userID user) . conversationMembers
-
-hasJoinedExistingConv :: User -> Map.Map ConversationName Conversation -> ConversationName -> Bool
-hasJoinedExistingConv user convs = maybe False (hasJoined user) . flip Map.lookup convs

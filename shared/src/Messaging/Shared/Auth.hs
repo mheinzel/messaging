@@ -11,7 +11,7 @@ import Control.Monad ((<=<))
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as BS
 import Data.Maybe (mapMaybe)
-import Data.Text.Encoding (encodeUtf8, decodeUtf8')
+import Data.Text.Encoding (decodeUtf8', encodeUtf8)
 import qualified Messaging.Shared.User as User
 
 -- Turn @/path@ and @user@ into @/path?userName=user@.

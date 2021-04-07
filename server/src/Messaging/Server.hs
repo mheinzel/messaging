@@ -10,18 +10,17 @@ import qualified Messaging.Server.Auth as Auth
 import qualified Messaging.Server.Conversation as Conv
 import qualified Messaging.Server.Delivery as Delivery
 import qualified Messaging.Server.Log as Log
+import Messaging.Server.Parser as Par
 import Messaging.Shared.Conversation (conversationNameGeneral)
 import qualified Messaging.Shared.Request as Req
 import Messaging.Shared.User (User (userID, userName), UserID, UserName (userNameText))
 import qualified Network.WebSockets as WS
 import qualified UnliftIO
 import qualified UnliftIO.Exception as Exc
-import Messaging.Server.Parser as Par
 
 runServer :: IO ()
 runServer = do
   state <- initialState
-  -- TODO: read from command line args
   port <- Par.runParse
   let logging = Log.Settings Log.LoggingStderr Log.LevelDebug
   let settings = Settings port logging

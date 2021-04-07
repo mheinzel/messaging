@@ -8,7 +8,8 @@ module Messaging.Server.Conversation
   )
 where
 
-import Control.Concurrent.STM (atomically, modifyTVar, readTVar, readTVarIO)
+import Control.Concurrent.STM (atomically, modifyTVar, readTVarIO)
+import Control.Monad (when)
 import Control.Monad.Reader.Class (asks)
 import Control.Monad.Trans (MonadIO (liftIO))
 import Data.Foldable (toList)
@@ -41,7 +42,10 @@ addToConversation user convName = do
 removeFromConversation :: User -> ConversationName -> App ()
 removeFromConversation user convName = do
   -- also announce leaving
-  broadcastLeft user convName
+  members <- getConversationMembers convName
+  when
+    (userID user `elem` members)
+    $ broadcastLeft user convName
 
   convs <- asks activeConversations
   liftIO $
@@ -59,7 +63,7 @@ removeFromConversation user convName = do
 removeFromAllConversations :: User -> App ()
 removeFromAllConversations user = do
   tConvs <- asks activeConversations
-  convs <- liftIO $ atomically $ readTVar tConvs
+  convs <- liftIO $ readTVarIO tConvs
   mapM_ (removeFromConversation user) (Map.keys convs)
 
 broadcastMessage :: User -> Message -> App ()
@@ -90,3 +94,6 @@ getConversationMembers convName = do
   pure $ case Map.lookup convName convMap of
     Nothing -> []
     Just c -> toList (conversationMembers c)
+
+hasJoined :: User -> Conversation -> Bool
+hasJoined user = Set.member (userID user) . conversationMembers

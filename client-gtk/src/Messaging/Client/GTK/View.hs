@@ -46,21 +46,24 @@ data State = State
 
 makeLenses ''State
 
-{-|
-  The 'view' function defines the structure of the UI. We make use of the notebook widget of the GI-GTK-declarative
-  library to display multiple conversations by using tabs. 
-  
-  The notebook widget is easy to use both lack some desirable functionality. If we have a lot of conversations, and thus
-  a lot of tabs for the conversations, the viewport of the UI gets stretched, and no scrolling seems to be possible.
-  Furthermore. GTK has trouble aligning the tab widgets when updating the view. 
-  
-  Instead of updating the whole UI structure for every updated render of the view, GTK finds the changes and only 
-  partially updates the view (see the 'customPatch' function in our custom MessageBox widget). However, to achieve these
-  partial updates, GTK needs to align the structure of the old and new version of the widget. In the case of the 
-  notebook widget, if we add a new tab in the beginning of the notebook, GTK will pair this new first tab, with the 
-  first tab of the previous UI view, which for our UI means is mismatches the MessageBox widgets of different 
-  conversations, and thus we have to update the MessageBoxes in a less than desirable way.    
--}
+-- | The 'view' function defines the structure of the UI.
+-- We make use of the notebook widget of the gi-gtk-declarative library to
+-- display multiple conversations by using tabs.
+--
+-- The notebook widget is easy to use but lacks some desirable functionality.
+-- If we have a lot of conversations, and thus a lot of tabs, the viewport of
+-- the UI gets stretched, and no scrolling seems to be possible.
+-- Furthermore, GTK has trouble aligning the tab widgets when updating the view.
+--
+--  Instead of updating the whole UI structure for every updated render of the
+--  view, GTK finds the changes and only partially updates the view (see the
+--  'customPatch' function in our custom MessageBox widget).
+--  However, to achieve these partial updates, GTK needs to align the structure
+--  of the old and new version of the widget. In the case of the notebook widget,
+--  if we add a new tab in the beginning of the notebook, GTK will pair this
+--  new first tab with the first tab of the previous UI view, which for our UI
+--  means it mismatches the MessageBox widgets of different conversations,
+--  and thus we have to update the MessageBoxes in a less than desirable way.
 view :: State -> AppView Window Event
 view st =
   bin
@@ -120,9 +123,10 @@ newConversationEntryHandler = entryHandler $ \msg -> Outbound $ Req.JoinConversa
 conversationEntryHandler :: Conv.ConversationName -> EventKey -> Entry -> IO (Bool, Event)
 conversationEntryHandler name = entryHandler $ \msg -> Outbound $ Req.SendMessage $ Msg.Message name msg
 
--- | a very simple keystroke event handler for our message input widget. If escape is pressed the client application is
--- closed. If the enter button (\r) is pressed, we send the current contents of the input widget as a messages to the
--- server.
+-- | A simple keystroke event handler for our message input widget.
+-- If escape is pressed, the client application is closed.
+-- If the enter button (\r) is pressed, we send the current contents of the
+-- input widget as a messages to the server.
 entryHandler :: (Text -> Event) -> EventKey -> Entry -> IO (Bool, Event)
 entryHandler handleFun eventKey entry = do
   key <- getEventKeyString eventKey

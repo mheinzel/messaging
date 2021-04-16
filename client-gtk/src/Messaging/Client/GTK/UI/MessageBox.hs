@@ -6,7 +6,6 @@ module Messaging.Client.GTK.UI.MessageBox where
 import Data.Foldable (fold)
 import Data.Text (Text)
 import Data.Vector (Vector)
-import qualified Data.Vector as Vec
 import qualified GI.GObject as GI
 import GI.Gtk
   ( Align (..),
@@ -17,10 +16,6 @@ import qualified GI.Gtk as Gtk
 import GI.Gtk.Declarative
 import GI.Gtk.Declarative.EventSource (Subscription, fromCancellation)
 
---
--- Custom widget
---
-
 newtype MessageBoxEvent = ScrolledToBottom Bool
 
 data MessageBoxProps = MessageBoxProps
@@ -29,6 +24,14 @@ data MessageBoxProps = MessageBoxProps
   }
   deriving (Show, Eq)
 
+{- | 
+  The 'messageBox' function can be use to create a custom message box widget, which functions as a container for a
+  list of messages. The widget is scrollable and has custom behaviour defined such that the widget sticks to the
+  bottom if a new message is added to the list when the viewport is scrolled all the way down.
+  
+  The widget emits MessageBoxEvent events and the MessageBoxProps represents the state of the message box, which holds
+  the messages the list and whether the message box should stick to the bottom of the viewport.
+-}
 messageBox :: Vector (Attribute Gtk.ScrolledWindow MessageBoxEvent) -> MessageBoxProps -> Widget MessageBoxEvent
 messageBox customAttributes customParams =
   Widget $
@@ -55,6 +58,9 @@ messageBox customAttributes customParams =
       Gtk.widgetShowAll window
       return (window, msgBox)
 
+    -- | The 'customPatch' function defines the update behaviour of widgets. Currently it is lacking and recreates all 
+    -- the messages on an update. This is due to that Gtk derives which old and new widget states belong together 
+    -- according to their order within the structure of the UI, and mismatches of the states currently seem unavoidable.     
     customPatch :: MessageBoxProps -> MessageBoxProps -> ListBox -> CustomPatch ScrolledWindow ListBox
     customPatch old new msgBox
       | new == old = CustomKeep
@@ -93,13 +99,6 @@ toListRow msg = do
   #setXalign label 0.0
   Gtk.containerAdd listBoxRow label
   return listBoxRow
-
-getNew :: (Eq a) => Vector a -> Vector a -> Maybe (Vector a)
-getNew old new
-  | Vec.null new = Nothing
-  | Vec.null old = Just new
-  | Vec.head old == Vec.head new = getNew (Vec.tail old) (Vec.tail new)
-  | otherwise = error "This case should not occur?"
 
 setSticky :: ScrolledWindow -> Bool -> IO ()
 setSticky _ False = pure ()

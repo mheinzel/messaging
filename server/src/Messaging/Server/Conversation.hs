@@ -20,7 +20,7 @@ import qualified Messaging.Shared.Message as Message
 import qualified Messaging.Shared.Response as Res
 import Messaging.Shared.User (User)
 
--- | Also announce arrival.
+-- | Adds a user to a conversation and announces their arrival to other users in that conversation.
 addToConversation :: User -> ConversationName -> App ()
 addToConversation user convName = do
   change <- runAtomically $ \state -> do
@@ -28,8 +28,9 @@ addToConversation user convName = do
   when (change == State.Changed) $
     broadCastJoined user convName
 
--- | First announce leaving, *then* remove from conversation
--- (so the user still gets a confirmation of being removed).
+-- | Removes a user from a conversation after announcing their departure to other users in that
+-- conversation. Because this happens in this order, the removed user still receives confirmation
+-- of being removed.
 removeFromConversation :: User -> ConversationName -> App ()
 removeFromConversation user convName = do
   wasMember <- runAtomically $ \state -> do
@@ -40,7 +41,8 @@ removeFromConversation user convName = do
   runAtomically $ \state -> do
     State.removeFromConversation state user convName
 
--- | Only announce after user is removed (assuming user disconnected).
+-- | Removes a user from all conversations they were in, and then announces their departure to
+-- other users in each of those conversations.
 removeFromAllConversations :: User -> App ()
 removeFromAllConversations user = do
   convs <- runAtomically $ \state ->
@@ -52,6 +54,8 @@ removeFromAllConversations user = do
 
 -- broadcasting ---------------------------------------------------------------
 
+-- | Broadcast a message sent by a user to all other users in the conversation that the message was
+-- sent in.
 broadcastMessage :: User -> Message -> App ()
 broadcastMessage user msg =
   broadcast (Message.messageConversation msg) $ Res.ReceivedMessage user msg

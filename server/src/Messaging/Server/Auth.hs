@@ -20,6 +20,9 @@ import Messaging.Shared.Auth as Auth
 import Messaging.Shared.User (User (User), UserID (UserID), UserName)
 import qualified Network.WebSockets as WS
 
+-- | Reads the request header for the requested username and then tries to mark that username as
+-- taken. Evaluates to a Right of the resulting user if this was successful. Otherwise evaluates to
+-- a Left of an error describing why it was not successful.
 authenticate :: WS.RequestHead -> App (Either Auth.Error User)
 authenticate req =
   case Auth.parsePath (WS.requestPath req) of
@@ -45,6 +48,7 @@ claimUserName name = do
         modifyTVar takenNames (S.insert name)
         return SuccessfullyClaimed
 
+-- | Marks a taken username as available again. This has no effect if the username was not taken.
 freeUserName :: UserName -> App ()
 freeUserName name = do
   takenNames <- asks State.takenUserNames

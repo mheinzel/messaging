@@ -13,6 +13,7 @@ import qualified Messaging.Server.Log as Log
 import Messaging.Server.State (State)
 import UnliftIO (MonadUnliftIO)
 
+-- | The main type for the server application that handles the server-side 'Messaging.Server.State.State'.
 newtype App a = App {unApp :: ReaderT State (LoggingT IO) a}
   deriving newtype (Functor, Applicative, Monad)
   deriving newtype (MonadReader State, MonadLogger, MonadIO, MonadUnliftIO)
@@ -26,6 +27,7 @@ data Settings = Settings
     logSettings :: Log.Settings
   }
 
+-- | Runs a transactional modification or query of the app state atomically and returns the result.
 runAtomically :: (State -> STM a) -> App a
 runAtomically stm = do
   state <- ask

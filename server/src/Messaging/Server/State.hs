@@ -1,6 +1,10 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE StrictData #-}
 
+-- | The core types that describe the server-side state.
+-- Many of the query and update operations defined in this module evaluate to some value wrapped in
+-- the 'Control.Concurrent.STM.STM' monad. These values can be retrieved in an atomic context, for
+-- example using the 'Messaging.Server.App.runAtomically' function.
 module Messaging.Server.State where
 
 import Control.Concurrent.STM (STM, TVar, modifyTVar, newTVarIO, readTVar, writeTVar)
@@ -12,6 +16,9 @@ import Messaging.Shared.Conversation (ConversationName)
 import Messaging.Shared.User (User (userID), UserID, UserName)
 import qualified Network.WebSockets as WS
 
+-- | Holds information about the current server-side state, including conversations and active
+-- users. Each field is wrapped in a transactional value ('Control.Concurrent.STM.TVar') to
+-- preserve consistency when the state is affected from multiple threads.
 data State = State
   { activeConversations :: TVar (Map ConversationName Conversation),
     connectedUsers :: TVar (Map UserID WS.Connection),
@@ -19,6 +26,7 @@ data State = State
     takenUserNames :: TVar (Set UserName)
   }
 
+-- | A conversation is a simple chat group of users who can send messages to each other.
 data Conversation = Conversation
   { conversationName :: ConversationName,
     conversationMembers :: Set UserID
@@ -55,8 +63,14 @@ getUserConversations state user = do
 data Change = Changed | NotChanged
   deriving (Eq, Show)
 
--- Also creates conversation if it didn't exist before.
-addToConversation :: State -> User -> ConversationName -> STM Change
+-- | Adds a user to a conversation. If the conversation did not exist yet, it is created. If the
+-- user was already part of the conversation, the state doesn't change.
+addToConversation ::
+  State ->
+  User ->
+  ConversationName ->
+  -- | Indicates whether or not the state has changed.
+  STM Change
 addToConversation state user convName = do
   convs <- readTVar (activeConversations state)
   case addUser convs of
@@ -83,7 +97,8 @@ addToConversation state user convName = do
               let newConv = conv {conversationMembers = newMembers}
               Just $ Map.insert convName newConv convs
 
--- Also removes conversation when last user left.
+-- | Removes a user from a conversation. If the conversation is left with no members, it is
+-- removed.
 removeFromConversation :: State -> User -> ConversationName -> STM ()
 removeFromConversation state user convName = do
   modifyTVar (activeConversations state) $ Map.update removeUser convName

@@ -37,6 +37,8 @@ data User = User
   deriving stock (Eq, Ord, Show, Generic)
   deriving anyclass (Aeson.ToJSON, Aeson.FromJSON)
 
+-- | Converts a text into a username. If the username is valid, evaluates to a Just of the
+-- username, otherwise evaluates to Nothing.
 mkUserName :: Text -> Maybe UserName
 mkUserName name
   | isValidUserName name = Just (UserName name)

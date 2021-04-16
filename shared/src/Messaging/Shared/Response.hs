@@ -23,14 +23,18 @@ import Messaging.Shared.Conversation (ConversationName)
 import Messaging.Shared.Message (Message)
 import Messaging.Shared.User (User)
 
+-- | A message from the server that describes an event that has happened.
 data Response
-  = ReceivedMessage User Message
-  | JoinedConversation User ConversationName
-  | LeftConversation User ConversationName
+  = -- | Received a message from a user.
+    ReceivedMessage User Message
+  | -- | A user has joined a conversation.
+    JoinedConversation User ConversationName
+  | -- | A user has left a conversation.
+    LeftConversation User ConversationName
   deriving stock (Show, Generic, Eq)
   deriving anyclass (Aeson.ToJSON, Aeson.FromJSON)
 
--- TODO: avoid duplication?
+-- | Describes why a deserialization failed.
 data DeserializeError = DeserializeError
   { invalidInput :: ByteString,
     errorMessage :: String

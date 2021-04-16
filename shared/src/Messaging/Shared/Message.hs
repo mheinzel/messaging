@@ -13,6 +13,7 @@ import Data.Text (Text)
 import GHC.Generics (Generic)
 import Messaging.Shared.Conversation (ConversationName)
 
+-- | A text message in a conversation.
 data Message = Message
   { messageConversation :: ConversationName,
     messageContent :: Text

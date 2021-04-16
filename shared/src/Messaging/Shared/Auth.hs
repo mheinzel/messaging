@@ -14,20 +14,22 @@ import Data.Maybe (mapMaybe)
 import Data.Text.Encoding (decodeUtf8', encodeUtf8)
 import qualified Messaging.Shared.User as User
 
--- Turn @/path@ and @user@ into @/path?userName=user@.
+-- | Turn @/path@ and @user@ into @/path?userName=user@.
 buildPath :: ByteString -> User.UserName -> ByteString
 buildPath basePath userName =
   basePath <> "?userName=" <> encodeUtf8 (User.userNameText userName)
 
+-- | Describes why parsing a path did not result in a valid, available username.
 data Error
   = MissingUserName
   | InvalidUserName
   | UserNameTaken
   deriving (Show)
 
--- | Could be improved, but works for now.
---
--- Turn @/path?userName=user@ into @user@.
+-- | Turn @/path?userName=user@ into @user@.
+-- If successful, evaluates to a Right of the username.
+-- Otherwise, evaluates to a Left of an error describing why it was not successful.
+-- Implementation could be improved, but works for now.
 parsePath :: ByteString -> Either Error User.UserName
 parsePath =
   addError InvalidUserName . User.mkUserName

@@ -23,6 +23,8 @@ instance Aeson.FromJSON ConversationName where
     maybe (fail "invalid ConversationName") pure . mkConversationName
       <=< Aeson.parseJSON
 
+-- | Converts a text into a conversation name. If the name is valid, evaluates to a Just of the
+-- conversation name, otherwise evaluates to Nothing.
 mkConversationName :: Text -> Maybe ConversationName
 mkConversationName name
   | isValidConversationName name = Just (ConversationName name)

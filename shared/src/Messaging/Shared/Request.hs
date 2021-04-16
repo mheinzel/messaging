@@ -22,13 +22,18 @@ import GHC.Generics (Generic)
 import Messaging.Shared.Conversation (ConversationName)
 import Messaging.Shared.Message (Message)
 
+-- | A request to the server.
 data Request
-  = SendMessage Message
-  | JoinConversation ConversationName
-  | LeaveConversation ConversationName
+  = -- | Send a message.
+    SendMessage Message
+  | -- | Join a conversation.
+    JoinConversation ConversationName
+  | -- | Leave a conversation.
+    LeaveConversation ConversationName
   deriving stock (Show, Generic)
   deriving anyclass (Aeson.ToJSON, Aeson.FromJSON)
 
+-- | Describes why a deserialization failed.
 data DeserializeError = DeserializeError
   { invalidInput :: ByteString,
     errorMessage :: String

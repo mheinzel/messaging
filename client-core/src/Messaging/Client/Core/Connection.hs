@@ -33,13 +33,15 @@ data URI = URI
   }
   deriving (Show)
 
+-- | Default URI (localhost).
 defaultURI :: URI
 defaultURI =
   case uriFromAbsolute [URI.QQ.uri|ws://127.0.0.1:8080/|] of
     Right uri -> uri
     Left err -> error $ "Unexpected invalid default URI: " <> err
 
--- This should match the defaultURI function
+-- | The default URI (as defined by 'defaultURI') as a string.
+-- This should match the 'defaultURI' function.
 showDefaultURI :: String
 showDefaultURI = "ws://127.0.0.1:8080/"
 
@@ -58,9 +60,13 @@ uriFromAbsolute URI.URI {URI.uriScheme, URI.uriAuthority, URI.uriPath} = do
     note err = maybe (Left err) Right
     defaultPort secure = if secure then URI.Port 443 else URI.Port 80
 
+-- | Runs the chat client.
 runClientApp ::
+  -- | The URI of the server.
   URI ->
+  -- | The username used to identify this client.
   User.UserName ->
+  -- | The main client action, which is passed the established connection.
   (WS.Connection -> IO a) ->
   IO a
 runClientApp URI {uriSecure, uriHost, uriPort, uriPath} userName client = do
@@ -75,7 +81,7 @@ runClientApp URI {uriSecure, uriHost, uriPort, uriPath} userName client = do
       then Wuss.runSecureClientWith host (fromIntegral port) path options headers client
       else WS.runClientWith host port path options headers client
 
--- IDEA: If we used the async package here, we coul check whether any of the
+-- IDEA: If we used the async package here, we could check whether any of the
 -- spawned threads terminated and re-raise the exception in the main thread.
 --
 -- Also, maybe the Chans should also contain CloseRequests, so we can terminate
@@ -110,12 +116,24 @@ withConnectionThreads conn action =
       killThread sending
       killThread receiving
 
-sendThread :: WS.Connection -> IO Req.Request -> IO ()
+-- | Creates a thread that sends requests over a connection.
+sendThread ::
+  -- | The connection over which to send the requests.
+  WS.Connection ->
+  -- | An IO action that retrieves the next request to be sent.
+  IO Req.Request ->
+  IO ()
 sendThread conn getRequest = forever $ do
   req <- getRequest
   WS.sendTextData conn (Req.serialize req)
 
-recvThread :: WS.Connection -> (Res.Response -> IO ()) -> IO ()
+-- | Creates a thread through which responses from the server are received.
+recvThread ::
+  -- | The connection through which to listen for responses.
+  WS.Connection ->
+  -- | An IO action to handle an incoming response.
+  (Res.Response -> IO ()) ->
+  IO ()
 recvThread conn putResponse = forever $ do
   received <- WS.receiveData conn
   case Res.deserialize received of

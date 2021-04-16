@@ -1,3 +1,4 @@
+-- | Functionality for parsing command line arguments.
 module Messaging.Client.Core.Parser where
 
 import qualified Data.ByteString.Char8 as Byte
@@ -7,12 +8,14 @@ import qualified Messaging.Shared.User as User
 import Options.Applicative
 import qualified URI.ByteString as URI
 
--- | Stores the inputs given at connection
+-- | Stores the inputs given at connection.
 data ConnectInput = ConnectInput
   { _username :: User.UserName,
     _uri :: Con.URI
   }
 
+-- | Parser for command line arguments. Reads a user name (option -u/--username) and optional URI
+-- (--uri).
 parseConnectInput :: Parser ConnectInput
 parseConnectInput =
   ConnectInput
@@ -35,6 +38,9 @@ parseConnectInput =
 userReadM :: ReadM User.UserName
 userReadM = eitherReader stringToUsername
 
+-- | Converts a string to a username. If conversion to a valid user name was successful, evaluates
+-- to a Right of the username. Otherwise, evaluates to a Left of a string describing why it was not
+-- successful.
 stringToUsername :: String -> Either String User.UserName
 stringToUsername s = case User.mkUserName (pack s) of
   Just userName -> Right userName

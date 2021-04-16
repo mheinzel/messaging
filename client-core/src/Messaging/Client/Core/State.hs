@@ -1,5 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
+-- | The core types that describe the user and conversation state of the client.
 module Messaging.Client.Core.State where
 
 import Data.Map (Map)
@@ -17,21 +18,25 @@ import qualified Messaging.Shared.Message as Msg
 import qualified Messaging.Shared.Response as Res
 import qualified Messaging.Shared.User as User
 
+-- | Holds information about the client's user and the state of joined conversations.
 data State = State
   { _currentUser :: User.UserName,
     _joinedConversations :: Map Conv.ConversationName ConversationState
   }
   deriving (Eq, Show)
 
+-- | Default client state with no conversations.
 emptyState :: User.UserName -> State
 emptyState user = State user mempty
 
+-- | The name and history entries of a conversation.
 data ConversationState = ConversationState
   { _conversationName :: Conv.ConversationName,
     _conversationHistory :: ConversationHistory
   }
   deriving (Eq, Show)
 
+-- | Default conversation state with no message entries.
 emptyConversation :: Conv.ConversationName -> ConversationState
 emptyConversation convName = ConversationState convName $ ConversationHistory Vector.empty
 
@@ -40,10 +45,14 @@ newtype ConversationHistory = ConversationHistory
   }
   deriving (Eq, Show)
 
+-- | An entry in the conversation history. Either a regular message or some type of system message.
 data ConversationHistoryEntry
-  = Message User.UserName Text
-  | UserJoined User.UserName
-  | UserLeft User.UserName
+  = -- | A regular text message sent by a user.
+    Message User.UserName Text
+  | -- | A system message saying a user joined the conversation.
+    UserJoined User.UserName
+  | -- | A system message saying a user left the conversation.
+    UserLeft User.UserName
   deriving (Eq, Show)
 
 makeLenses ''State
@@ -72,7 +81,7 @@ modifyConvState convName f =
     (Just . f . fromMaybe (emptyConversation convName))
 
 -- Modifies the conversation history in a conversation with a given name, or
--- does nothing if that conversation hasn't been joined
+-- does nothing if that conversation hasn't been joined.
 addHistoryEntry ::
   ConversationHistoryEntry ->
   ConversationState ->
@@ -92,6 +101,7 @@ removeConversation name = over joinedConversations (Map.delete name)
 hasJoined :: Conv.ConversationName -> State -> Bool
 hasJoined name = Map.member name . _joinedConversations
 
+-- | Appropriately updates the state based on information given by a server message.
 handleServerResponse :: Res.Response -> State -> State
 handleServerResponse (Res.ReceivedMessage user msg) =
   modifyConvState (Msg.messageConversation msg) $

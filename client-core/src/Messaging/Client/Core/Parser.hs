@@ -38,9 +38,6 @@ parseConnectInput =
 userReadM :: ReadM User.UserName
 userReadM = eitherReader stringToUsername
 
--- | Converts a string to a username. If conversion to a valid user name was successful, evaluates
--- to a Right of the username. Otherwise, evaluates to a Left of a string describing why it was not
--- successful.
 stringToUsername :: String -> Either String User.UserName
 stringToUsername s = case User.mkUserName (pack s) of
   Just userName -> Right userName
